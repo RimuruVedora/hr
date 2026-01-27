@@ -15,7 +15,9 @@
         <nav class="nav flex-column">
           <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}"><ion-icon name="home-outline"></ion-icon>Dashboard</a>
           <a class="nav-link" href="#"><ion-icon name="newspaper-outline"></ion-icon>Reports</a>
-          <a class="nav-link" href="#"><ion-icon name="document-text-outline"></ion-icon>Driver's Response</a>
+          <a class="nav-link" href="#"><ion-icon name="document-text-outline"></ion-icon>Drivers' Response</a>
+          <a class="nav-link" href="learning"><ion-icon name="library-outline"></ion-icon>Drivers' Learning</a>
+          <a class="nav-link" href="training"><ion-icon name="car-sport-outline"></ion-icon>Drivers' Training</a>
           <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>SOP</a>
         </nav>
       </div>

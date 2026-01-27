@@ -17,4 +17,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/dashboard', function () {
         return view('dashboard.admin-dashboard');
     })->name('admin.dashboard');
+    Route::get('/admin/learning', function () {
+        return view('learning.admin-learning');
+    })->name('admin.learning');
+    Route::get('/admin/training', function () {
+        return view('training.admin-training');
+    })->name('admin.training');
 });
