@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Competency;
+use App\Models\Employee;
+use App\Models\JobRole;
+use App\Models\EmployeeCompetency;
 
 class CompetencyController extends Controller
 {
@@ -108,5 +111,85 @@ class CompetencyController extends Controller
         $item = Competency::findOrFail($id);
         $item->delete();
         return response()->json(['deleted' => true]);
+    }
+
+    public function analyticsData()
+    {
+        $employees = Employee::all(); 
+
+        $data = $employees->map(function ($emp) {
+            $empCompetencies = EmployeeCompetency::where('employee_id', $emp->id)->get();
+            
+            $roleName = $emp->position ?? 'Unknown';
+            $jobRole = JobRole::where('name', $roleName)->with('competencies')->first();
+            
+            $compData = [];
+            $roleCompetencies = $jobRole ? $jobRole->competencies : collect([]);
+            
+            if ($roleCompetencies->isEmpty()) {
+                foreach ($empCompetencies as $ec) {
+                     $compData[] = [
+                        'name' => $ec->competency->name ?? 'Unknown',
+                        'current' => $this->mapProficiencyToScore($ec->current_proficiency),
+                        'target' => 0
+                    ];
+                }
+            } else {
+                foreach ($roleCompetencies as $rc) {
+                    $empComp = $empCompetencies->firstWhere('competency_id', $rc->id);
+                    $currentVal = $empComp ? $this->mapProficiencyToScore($empComp->current_proficiency) : 0;
+                    $targetVal = $this->mapProficiencyToScore($rc->proficiency);
+                    
+                    $compData[] = [
+                        'name' => $rc->name,
+                        'current' => $currentVal,
+                        'target' => $targetVal
+                    ];
+                }
+            }
+            
+            $avgCurrent = count($compData) > 0 ? round(collect($compData)->avg('current'), 1) : 0;
+            $avgRequired = count($compData) > 0 ? round(collect($compData)->avg('target'), 1) : 0;
+            
+            $labels = collect($compData)->pluck('name')->toArray();
+            $currentSet = collect($compData)->pluck('current')->toArray();
+            $requiredSet = collect($compData)->pluck('target')->toArray();
+            
+            // Priority Logic
+            $gap = $avgRequired - $avgCurrent;
+            $priority = 'Low';
+            if ($gap > 2) $priority = 'Critical';
+            elseif ($gap > 1) $priority = 'High';
+            elseif ($gap > 0.5) $priority = 'Normal';
+            
+            return [
+                'id' => $emp->employee_id,
+                'name' => $emp->name, // Using name from Employee model
+                'role' => $roleName,
+                'dept' => $emp->department ?? 'General',
+                'current' => $avgCurrent,
+                'required' => $avgRequired,
+                'priority' => $priority,
+                'competencies' => $currentSet,
+                'requiredSet' => $requiredSet,
+                'labels' => $labels
+            ];
+        });
+
+        return response()->json($data->values(), 200, [], JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    private function mapProficiencyToScore($level) {
+        if (is_numeric($level)) {
+            return (float) $level;
+        }
+        $map = [
+            'beginner' => 1,
+            'intermediate' => 2,
+            'advanced' => 3,
+            'expert' => 4,
+            'master' => 5
+        ];
+        return $map[strtolower($level ?? '')] ?? 0;
     }
 }

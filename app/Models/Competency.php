@@ -16,4 +16,9 @@ class Competency extends Model
         'status',
         'desc',
     ];
+
+    public function jobRoles()
+    {
+        return $this->belongsToMany(JobRole::class, 'job_role_competency');
+    }
 }
