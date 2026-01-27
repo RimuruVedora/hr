@@ -1,0 +1,172 @@
+/* Sidebar */
+.sidebar {
+    background: #181818ff;
+    color: #fff;
+    min-height: 100vh;
+    border: none;
+    width: 220px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1040;
+    transition: left 0.3s;
+    overflow-y: auto;
+    padding: 1rem 0.3rem 1rem 0.3rem;
+    scrollbar-width: none; /* Firefox */
+    height: 100vh;
+    -ms-overflow-style: none;  /* IE/Edge */
+}
+.sidebar::-webkit-scrollbar {
+    display: none;    
+    width: 0px;
+    background: transparent;
+    display: none; /* Chrome, Safari, Opera */
+}
+.sidebar a, .sidebar button {
+    color: #bfc7d1;
+    background: none;
+    border: none;
+    font-size: 0.95rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.1rem;
+    transition: background 0.2s, color 0.2s;
+    width: 100%;
+    text-align: left;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.sidebar a.active,
+.sidebar a:hover,
+.sidebar button.active,
+.sidebar button:hover {
+    background: linear-gradient(90deg, #9A66ff 0%, #4311a5 100%);
+    color: #fff;
+}
+.sidebar hr {
+    border-top: 1px solid #232a43;
+    margin: 0.7rem 0;
+}
+.sidebar .nav-link ion-icon {
+    font-size: 1.2rem;
+    margin-right: 0.3rem;
+}
+.sidebar h6 {
+    color: #bfc7d1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0 0.7rem;
+}
+
+/* Dropdown styling for sidebar */
+.sidebar .dropdown-menu {
+    background: #2a2a2a !important;
+    border: 1px solid #444 !important;
+    margin-left: 0.7rem;
+    margin-top: 0.2rem;
+}
+.sidebar .dropdown-item {
+    color: #bfc7d1 !important;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+.sidebar .dropdown-item:hover {
+    background: linear-gradient(90deg, #9A66ff 0%, #4311a5 100%) !important;
+    color: #fff !important;
+}
+.sidebar .dropdown-item ion-icon {
+    font-size: 1rem;
+}
+.sidebar .dropdown-toggle::after {
+    margin-left: auto;
+}
+
+/* Sidebar compatibility */
+.main-content {
+    margin-left: 0;
+    transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 768px) {
+    .main-content {
+        margin-left: 220px;
+    }
+}
+
+/* Helper classes for sidebar to work without Bootstrap */
+.d-flex { display: flex !important; }
+.flex-column { flex-direction: column !important; }
+.justify-content-between { justify-content: space-between !important; }
+.align-items-center { align-items: center !important; }
+.justify-content-center { justify-content: center !important; }
+.mb-5 { margin-bottom: 3rem !important; }
+.mt-3 { margin-top: 1rem !important; }
+.me-2 { margin-right: 0.5rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+.mb-2 { margin-bottom: 0.5rem !important; }
+.p-0 { padding: 0 !important; }
+.p-3 { padding: 1rem !important; }
+.border-end { border-right: 1px solid #232a43 !important; }
+.border-top { border-top: 1px solid #232a43 !important; }
+.text-uppercase { text-transform: uppercase !important; }
+.img-fluid { max-width: 100%; height: auto; }
+.nav { display: flex; flex-direction: column; padding-left: 0; margin-bottom: 0; list-style: none; }
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .sidebar {
+        width: 180px;
+        padding: 1rem 0.3rem;
+    }
+    .main-content {
+        margin-left: 180px;
+    }
+}
+
+@media (max-width: 900px) {
+    .sidebar {
+        left: -220px;
+        width: 180px;
+        padding: 1rem 0.3rem;
+    }
+    .sidebar.show {
+        left: 0;
+    }
+    .main-content {
+        margin-left: 0;
+        padding: 1rem 0.5rem 1rem 0.5rem;
+    }
+    .sidebar-toggle {
+        display: block;
+    }
+}
+
+@media (max-width: 700px) {
+    .sidebar {
+        width: 100vw;
+        left: -100vw;
+        padding: 0.7rem 0.2rem;
+    }
+    .sidebar.show {
+        left: 0;
+    }
+    .main-content {
+        padding: 0.3rem 0.1rem;
+    }
+}
+
+@media (min-width: 1400px) {
+    .sidebar {
+        width: 260px;
+        padding: 2rem 1rem 2rem 1rem;
+    }
+    .main-content {
+        margin-left: 260px;
+    }
+}
