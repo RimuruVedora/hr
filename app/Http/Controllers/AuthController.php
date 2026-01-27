@@ -168,6 +168,8 @@ class AuthController extends Controller
 
         Session::forget(['auth_otp', 'auth_otp_expires_at', 'auth_account_id', 'auth_otp_attempts', 'auth_otp_locked_until']);
 
+        Session::flash('show_welcome_modal', true);
+
         // Redirect based on account type
         if ($account->Account_Type == 1) {
             return redirect()->route('admin.dashboard');

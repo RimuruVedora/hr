@@ -2,9 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CompetencyController;
 
+// Explicit GET handlers to avoid 405 on some Apache/XAMPP setups
 Route::get('/', function () {
-    return redirect()->route('login');
+    return redirect('/login');
+});
+// Handle direct hits to /public (when DocumentRoot isn't set to /public)
+Route::get('/public', function () {
+    return redirect('/login');
 });
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -17,10 +23,4 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/dashboard', function () {
         return view('dashboard.admin-dashboard');
     })->name('admin.dashboard');
-    Route::get('/admin/learning', function () {
-        return view('learning.admin-learning');
-    })->name('admin.learning');
-    Route::get('/admin/training', function () {
-        return view('training.admin-training');
-    })->name('admin.training');
 });
