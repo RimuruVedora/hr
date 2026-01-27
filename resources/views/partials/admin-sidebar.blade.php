@@ -15,6 +15,7 @@
         <nav class="nav flex-column">
           <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}"><ion-icon name="home-outline"></ion-icon>Dashboard</a>
           <a class="nav-link {{ request()->routeIs('user.management') ? 'active' : '' }}" href="{{ route('user.management') }}"><ion-icon name="people-outline"></ion-icon>User Management</a>
+          <a class="nav-link" href="#"><ion-icon name="newspaper-outline"></ion-icon>Reports</a>
           <div class="dropdown">
             <button type="button" class="nav-link dropdown-toggle" aria-expanded="false"><ion-icon name="newspaper-outline"></ion-icon>Competency</button>
             <div class="dropdown-menu">
@@ -25,9 +26,10 @@
          <div class="dropdown">
             <button type="button" class="nav-link dropdown-toggle" aria-expanded="false"><ion-icon name="newspaper-outline"></ion-icon>Training Management</button>
             <div class="dropdown-menu">
-              <a class="dropdown-item" href="{{ route('competency.framework') }}"><ion-icon name="layers-outline"></ion-icon>Online Exams</a>
-              <a class="dropdown-item" href="{{ route('competency.analytics') }}"><ion-icon name="analytics-outline"></ion-icon>Physical Records</a>
+              <a class="dropdown-item" href="#"><ion-icon name="layers-outline"></ion-icon>Online Exams</a>
+              <a class="dropdown-item" href="#"><ion-icon name="analytics-outline"></ion-icon>Physical Records</a>
             </div> 
+          </div>
           <a class="nav-link" href="#"><ion-icon name="document-text-outline"></ion-icon>Driver's Response</a>
           <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>SOP</a>
         </nav>

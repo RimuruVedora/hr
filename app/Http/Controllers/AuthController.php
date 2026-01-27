@@ -86,8 +86,8 @@ class AuthController extends Controller
 
             Mail::send([], [], function ($message) use ($account, $html) {
                 $message->to($account->email)
-                        ->subject('Your Login OTP - ViaHale')
-                        ->html($html);
+                    ->subject('Your Login OTP - ViaHale')
+                    ->html($html);
             });
         } catch (\Exception $e) {
             return back()->withErrors(['login_error' => 'Failed to send OTP. Please try again. ' . $e->getMessage()]);
@@ -103,7 +103,7 @@ class AuthController extends Controller
     public function verifyOtp(Request $request)
     {
         $otp = $request->otp1 . $request->otp2 . $request->otp3 . $request->otp4 . $request->otp5 . $request->otp6;
-        
+
         $expiresAt = Session::get('auth_otp_expires_at');
         $accountId = Session::get('auth_account_id');
         $lockedUntil = Session::get('auth_otp_locked_until');
@@ -187,7 +187,7 @@ class AuthController extends Controller
 
         $account = Account::find($accountId);
         if (!$account) {
-             return response()->json(['success' => false, 'message' => 'User not found.']);
+            return response()->json(['success' => false, 'message' => 'User not found.']);
         }
 
         $otp = rand(100000, 999999);
@@ -232,8 +232,8 @@ class AuthController extends Controller
 
             Mail::send([], [], function ($message) use ($account, $html) {
                 $message->to($account->email)
-                        ->subject('Your Login OTP - ViaHale')
-                        ->html($html);
+                    ->subject('Your Login OTP - ViaHale')
+                    ->html($html);
             });
 
             return response()->json(['success' => true]);
