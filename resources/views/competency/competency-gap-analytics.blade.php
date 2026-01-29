@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Competency Performance Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -129,8 +130,9 @@
 
     <!-- VIEW MODAL: Individual Performance Analytics -->
     <div id="viewModalOverlay" class="modal-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div id="viewModalContent" class="modal-content bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden p-8 scale-95 opacity-0 transition-all duration-300">
-            <div class="flex justify-between items-start mb-6">
+        <div id="viewModalContent" class="modal-content bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] scale-95 opacity-0 transition-all duration-300">
+            <!-- Modal Header (Fixed) -->
+            <div class="flex justify-between items-start p-8 pb-4 border-b border-slate-100 flex-shrink-0">
                 <div>
                     <h2 id="modalEmpName" class="text-2xl font-black text-slate-900 leading-none">Employee Name</h2>
                     <p id="modalEmpRole" class="text-sm text-slate-500 mt-2">Position Detail</p>
@@ -138,27 +140,66 @@
                 <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
 
-            <div class="space-y-6">
-                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Competency Gap Analysis</h4>
-                    <div class="h-64">
-                        <canvas id="gapChart"></canvas>
+            <!-- Scrollable Content -->
+            <div class="overflow-y-auto p-8 pt-6 custom-scrollbar flex-grow">
+                <div class="space-y-6">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Competency Gap Analysis</h4>
+                        <div class="h-64">
+                            <canvas id="gapChart"></canvas>
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Achieved Levels</p>
-                        <p id="modalAchieved" class="text-lg font-black text-emerald-700">0%</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Achieved Levels</p>
+                            <p id="modalAchieved" class="text-lg font-black text-emerald-700">0%</p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-rose-50 border border-rose-100">
+                            <p class="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Total Gap</p>
+                            <p id="modalGap" class="text-lg font-black text-rose-700">0 Points</p>
+                        </div>
                     </div>
-                    <div class="p-4 rounded-xl bg-rose-50 border border-rose-100">
-                        <p class="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Total Gap</p>
-                        <p id="modalGap" class="text-lg font-black text-rose-700">0 Points</p>
+
+                    <!-- AI Plan Section -->
+                    <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mt-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-widest"><i class="fa-solid fa-robot mr-2"></i>AI Development Plan</h4>
+                            <button id="btn-trigger-ai-plan" class="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 transition-colors">
+                                Generate Plan
+                            </button>
+                        </div>
+                        <div id="aiPlanContent" class="text-sm text-slate-600">
+                            <p class="italic text-slate-400">Click "Generate Plan" to get AI-powered recommendations based on competency gaps.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- AI Chat Section (Hidden by default) -->
+                    <div id="aiChatSection" class="hidden border-t border-slate-100 pt-6 mt-6">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Ask AI about this plan</h4>
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                            <div id="chatHistory" class="h-48 overflow-y-auto p-4 space-y-3 text-sm custom-scrollbar">
+                                <!-- Chat messages will appear here -->
+                                <div class="flex items-start gap-2.5">
+                                    <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs"><i class="fa-solid fa-robot"></i></div>
+                                    <div class="bg-white border border-slate-200 p-2.5 rounded-lg rounded-tl-none shadow-sm text-slate-600 max-w-[85%]">
+                                        Hi! I've analyzed the competency profile. Feel free to ask me for more details on any specific action item.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
+                                <input type="text" id="chatInput" class="flex-grow px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ask a follow-up question...">
+                                <button onclick="sendChatMessage()" class="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+            <!-- Footer (Fixed) -->
+            <div class="p-6 border-t border-slate-100 flex justify-end flex-shrink-0">
                 <button onclick="closeModal()" class="bg-slate-900 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-slate-200">Close Analysis</button>
             </div>
         </div>

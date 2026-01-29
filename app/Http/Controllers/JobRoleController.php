@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\JobRole;
 use App\Models\Competency;
+use App\Models\Employee;
+use App\Models\EmployeeCompetency;
 use Illuminate\Http\Request;
 
 class JobRoleController extends Controller
@@ -36,6 +38,7 @@ class JobRoleController extends Controller
 
         if (!empty($validated['competencies'])) {
             $jobRole->competencies()->sync($validated['competencies']);
+            $this->syncEmployeeCompetencies($jobRole, $validated['competencies']);
         }
 
         return response()->json($jobRole->load('competencies'), 201);
@@ -51,11 +54,6 @@ class JobRoleController extends Controller
             'weighting' => 'integer|min:1|max:5'
         ]);
 
-        // We only update competencies and weighting here based on the 'Assign' modal
-        // The modal doesn't seem to allow editing name/description based on previous prompt ("job role(can't edit)"), 
-        // but this new prompt says "job roles (dropdown)". 
-        // If they pick a job role, we are UPDATING that job role's assignments.
-
         if (isset($validated['weighting'])) {
             $jobRole->weighting = $validated['weighting'];
             $jobRole->save();
@@ -63,9 +61,62 @@ class JobRoleController extends Controller
 
         if (isset($validated['competencies'])) {
             $jobRole->competencies()->sync($validated['competencies']);
+            $this->syncEmployeeCompetencies($jobRole, $validated['competencies']);
         }
 
         return response()->json($jobRole->load('competencies'));
+    }
+
+    private function syncEmployeeCompetencies($jobRole, $competencyIds)
+    {
+        // 1. Find all employees with this job role
+        $employees = Employee::where('job_role_id', $jobRole->id)->get();
+
+        if ($employees->isEmpty()) {
+            return;
+        }
+
+        // 2. Get the full competency objects to access 'proficiency' field
+        $competencies = Competency::whereIn('id', $competencyIds)->get();
+
+        foreach ($employees as $employee) {
+            
+            // Ensure ID is linked if missing (auto-fix)
+            if (!$employee->job_role_id) {
+                $employee->job_role_id = $jobRole->id;
+                $employee->save();
+            }
+
+            foreach ($competencies as $competency) {
+                // Map proficiency string to numeric score
+                $targetScore = $this->mapProficiencyToScore($competency->proficiency);
+
+                // Update or Create the employee competency record
+                EmployeeCompetency::updateOrCreate(
+                    [
+                        'employee_id' => $employee->id,
+                        'competency_id' => $competency->id
+                    ],
+                    [
+                        'target_proficiency' => $targetScore,
+                    ]
+                );
+            }
+        }
+    }
+
+    private function mapProficiencyToScore($level) {
+        if (is_numeric($level)) {
+            return (float) $level;
+        }
+        $map = [
+            'beginner' => 1,
+            'intermediate' => 2,
+            'advanced' => 3,
+            'expert' => 4,
+            'master' => 5
+        ];
+        return $map[strtolower($level ?? '')] ?? 0;
     }
 
     public function destroy($id)

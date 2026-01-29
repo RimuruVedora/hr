@@ -2,17 +2,57 @@
 let performanceData = [];
 let gapChart = null;
 let summaryChart = null;
+let currentEmployeeId = null;
 
 // Expose functions to global scope for HTML onclick events
 window.filterTable = filterTable;
 window.viewAnalysis = viewAnalysis;
 window.closeModal = closeModal;
+window.triggerAIPlan = triggerAIPlan;
+window.sendChatMessage = sendChatMessage;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Attach event listener for AI Plan button
+    const aiPlanBtn = document.getElementById('btn-trigger-ai-plan');
+    if (aiPlanBtn) {
+        aiPlanBtn.addEventListener('click', triggerAIPlan);
+    }
+
+    // Attach enter key for chat input
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+    }
+
     try {
         const response = await fetch('/hr/public/competency/analytics-data');
         if (!response.ok) throw new Error('Failed to fetch data');
-        performanceData = await response.json();
+        const rawData = await response.json();
+        
+        // Pre-calculate gaps and achievement stats
+        performanceData = rawData.map(emp => {
+            let totalGap = 0;
+            let totalRequired = 0;
+            let totalCurrentCapped = 0;
+
+            if (emp.requiredSet && emp.competencies) {
+                emp.requiredSet.forEach((req, index) => {
+                    const curr = emp.competencies[index] || 0;
+                    totalGap += Math.max(0, req - curr);
+                    totalRequired += req;
+                    totalCurrentCapped += Math.min(curr, req);
+                });
+            }
+            
+            return { 
+                ...emp, 
+                totalGap,
+                achievedScore: totalRequired > 0 ? ((totalCurrentCapped / totalRequired) * 100).toFixed(0) : 100
+            };
+        });
+
         renderPerformance();
     } catch (error) {
         console.error('Error loading analytics:', error);
@@ -31,8 +71,8 @@ function renderPerformance() {
     }
 
     body.innerHTML = performanceData.map(emp => {
-        const hasGap = emp.current < emp.required;
-        const gapValue = (emp.required - emp.current).toFixed(1);
+        const hasGap = emp.totalGap > 0;
+        const gapValue = emp.totalGap.toFixed(1);
         
         return `
         <tr class="hover:bg-slate-50/80 transition-colors">
@@ -84,8 +124,8 @@ function initSummaryChart() {
     const depts = [...new Set(performanceData.map(d => d.dept))].filter(d => d);
     if (depts.length === 0) depts.push('General');
 
-    const hitData = depts.map(d => performanceData.filter(e => e.dept === d && e.current >= e.required).length);
-    const missData = depts.map(d => performanceData.filter(e => e.dept === d && e.current < e.required).length);
+    const hitData = depts.map(d => performanceData.filter(e => e.dept === d && e.totalGap === 0).length);
+    const missData = depts.map(d => performanceData.filter(e => e.dept === d && e.totalGap > 0).length);
 
     summaryChart = new Chart(ctx, {
         type: 'line',
@@ -147,18 +187,158 @@ function filterTable() {
 }
 
 function viewAnalysis(id) {
+    currentEmployeeId = id;
     const emp = performanceData.find(e => e.id === id);
     document.getElementById('modalEmpName').innerText = emp.name;
     document.getElementById('modalEmpRole').innerText = `${emp.role} • ${emp.dept}`;
-    const gap = Math.max(0, (emp.required - emp.current)).toFixed(1);
     
-    // Avoid division by zero
-    const achieved = emp.required > 0 ? ((emp.current / emp.required) * 100).toFixed(0) : 100;
+    document.getElementById('modalAchieved').innerText = emp.achievedScore + '%';
+    document.getElementById('modalGap').innerText = emp.totalGap > 0 ? `-${emp.totalGap.toFixed(1)} Points` : 'No Gap';
     
-    document.getElementById('modalAchieved').innerText = achieved + '%';
-    document.getElementById('modalGap').innerText = gap > 0 ? `-${gap} Points` : 'No Gap';
+    // Reset AI Content
+    document.getElementById('aiPlanContent').innerHTML = '<p class="italic text-slate-400">Click "Generate Plan" to get AI-powered recommendations based on competency gaps.</p>';
+
+    // Hide Chat Section and Reset Chat
+    document.getElementById('aiChatSection').classList.add('hidden');
+    document.getElementById('chatHistory').innerHTML = `
+        <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs"><i class="fa-solid fa-robot"></i></div>
+            <div class="bg-white border border-slate-200 p-2.5 rounded-lg rounded-tl-none shadow-sm text-slate-600 max-w-[85%]">
+                Hi! I've analyzed the competency profile. Feel free to ask me for more details on any specific action item.
+            </div>
+        </div>
+    `;
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) chatInput.value = '';
+
     toggleModal(true);
     setTimeout(() => initIndividualChart(emp), 300);
+}
+
+async function triggerAIPlan() {
+    if (!currentEmployeeId) return;
+    
+    const container = document.getElementById('aiPlanContent');
+    container.innerHTML = '<div class="flex items-center gap-2 text-indigo-600"><i class="fa-solid fa-circle-notch fa-spin"></i> Generating personalized plan...</div>';
+    
+    try {
+        const response = await fetch(`/hr/public/competency/ai-plan/${currentEmployeeId}`);
+        if (!response.ok) throw new Error('Failed to generate plan');
+        const plan = await response.json();
+        
+        let html = `<p class="font-semibold text-slate-800 mb-3">${plan.summary}</p>`;
+        
+        if (plan.actions && plan.actions.length > 0) {
+            html += '<div class="space-y-3">';
+            plan.actions.forEach(action => {
+                if (typeof action === 'string') {
+                    html += `<div class="flex items-start gap-2"><i class="fa-solid fa-check text-indigo-500 mt-1"></i><span>${action}</span></div>`;
+                } else {
+                    html += `
+                        <div class="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-indigo-700 text-xs uppercase">${action.skill}</span>
+                                <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded">${action.gap}</span>
+                            </div>
+                            <ul class="text-xs text-slate-600 space-y-1 mt-2">
+                                ${action.suggestions.map(s => `<li class="flex items-start gap-1.5"><i class="fa-solid fa-angle-right text-indigo-400 mt-0.5"></i>${s}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            });
+            html += '</div>';
+        }
+        
+        container.innerHTML = html;
+        
+        // Show Chat Section
+        document.getElementById('aiChatSection').classList.remove('hidden');
+        
+    } catch (error) {
+        console.error('AI Plan Error:', error);
+        container.innerHTML = '<p class="text-rose-500 text-xs font-bold">Failed to generate plan. Please try again.</p>';
+    }
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message || !currentEmployeeId) return;
+
+    // Append User Message
+    const chatHistory = document.getElementById('chatHistory');
+    chatHistory.innerHTML += `
+        <div class="flex items-start gap-2.5 justify-end">
+            <div class="bg-indigo-600 text-white p-2.5 rounded-lg rounded-tr-none shadow-sm max-w-[85%]">
+                ${message}
+            </div>
+            <div class="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs"><i class="fa-solid fa-user"></i></div>
+        </div>
+    `;
+    input.value = '';
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    // Show Loading
+    const loadingId = 'loading-' + Date.now();
+    chatHistory.innerHTML += `
+        <div id="${loadingId}" class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs"><i class="fa-solid fa-robot"></i></div>
+            <div class="bg-white border border-slate-200 p-2.5 rounded-lg rounded-tl-none shadow-sm text-slate-600">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Thinking...
+            </div>
+        </div>
+    `;
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    try {
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+
+        const response = await fetch(`/hr/public/competency/ai-chat/${currentEmployeeId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token
+            },
+            body: JSON.stringify({ message })
+        });
+        
+        const data = await response.json();
+        
+        // Remove Loading
+        const loader = document.getElementById(loadingId);
+        if (loader) loader.remove();
+
+        // Append AI Response
+        if (data.reply) {
+             chatHistory.innerHTML += `
+                <div class="flex items-start gap-2.5">
+                    <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs"><i class="fa-solid fa-robot"></i></div>
+                    <div class="bg-white border border-slate-200 p-2.5 rounded-lg rounded-tl-none shadow-sm text-slate-600 max-w-[85%]">
+                        ${data.reply.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+        } else {
+             throw new Error('No reply');
+        }
+
+    } catch (error) {
+        console.error('Chat Error:', error);
+        const loader = document.getElementById(loadingId);
+        if (loader) loader.remove();
+        
+        chatHistory.innerHTML += `
+            <div class="flex items-start gap-2.5">
+                <div class="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-xs"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="bg-white border border-rose-200 p-2.5 rounded-lg rounded-tl-none shadow-sm text-rose-600 text-xs">
+                    Failed to send message. Please try again.
+                </div>
+            </div>
+        `;
+    }
+    chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
 function initIndividualChart(emp) {

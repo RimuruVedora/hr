@@ -7,18 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 class EmployeeCompetency extends Model
 {
     protected $fillable = [
-        'user_id',
+        'employee_id',
         'competency_id',
         'current_proficiency',
         'target_proficiency',
-        'gap_score',
         'priority',
         'status',
     ];
 
-    public function account()
+    protected static function booted()
     {
-        return $this->belongsTo(Account::class, 'user_id', 'User_ID');
+        // Removed auto-calculation of gap_score as column is removed
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
     }
 
     public function competency()

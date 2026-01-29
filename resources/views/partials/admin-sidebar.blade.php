@@ -23,11 +23,19 @@
               <a class="dropdown-item" href="{{ route('competency.analytics') }}"><ion-icon name="analytics-outline"></ion-icon>Competency Analytics</a>
             </div>
           </div>
+          <div class="dropdown">
+            <button type="button" class="nav-link dropdown-toggle {{ request()->routeIs('learning.*') ? 'active' : '' }}" aria-expanded="false"><ion-icon name="school-outline"></ion-icon>Learning Management</button>
+            <div class="dropdown-menu">
+              <a class="dropdown-item {{ request()->routeIs('learning.courses') ? 'active' : '' }}" href="{{ route('learning.courses') }}"><ion-icon name="book-outline"></ion-icon>Courses</a>
+              <a class="dropdown-item {{ request()->routeIs('learning.assessments') ? 'active' : '' }}" href="{{ route('learning.assessments') }}"><ion-icon name="clipboard-outline"></ion-icon>Assessments</a>
+                          <a class="dropdown-item {{ request()->routeIs('learning.assessment-scores') ? 'active' : '' }}" href="{{ route('learning.assessment-scores') }}"><ion-icon name="bar-chart-outline"></ion-icon>Assessment Score</a>
+            </div> 
+          </div>
          <div class="dropdown">
             <button type="button" class="nav-link dropdown-toggle" aria-expanded="false"><ion-icon name="newspaper-outline"></ion-icon>Training Management</button>
             <div class="dropdown-menu">
-              <a class="dropdown-item" href="#"><ion-icon name="layers-outline"></ion-icon>Online Exams</a>
-              <a class="dropdown-item" href="#"><ion-icon name="analytics-outline"></ion-icon>Physical Records</a>
+              <a class="dropdown-item {{ request()->routeIs('training.schedule') ? 'active' : '' }}" href="{{ route('training.schedule') }}"><ion-icon name="layers-outline"></ion-icon>Training Schedule</a>
+              <a class="dropdown-item" href="#"><ion-icon name="analytics-outline"></ion-icon></a>
             </div> 
           </div>
           <a class="nav-link" href="#"><ion-icon name="document-text-outline"></ion-icon>Driver's Response</a>
@@ -39,6 +47,7 @@
     <div class="p-3 border-top mb-2">
                 <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Profile</a>
                           <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Settings</a>
+                          <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Sync</a>
       <form method="POST" action="{{ route('logout') }}" class="d-inline">
         @csrf
         <button type="submit" class="nav-link text-danger" style="background: none; border: none; width: 100%; text-align: left;">

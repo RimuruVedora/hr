@@ -7,9 +7,51 @@ use App\Models\Competency;
 use App\Models\Employee;
 use App\Models\JobRole;
 use App\Models\EmployeeCompetency;
+use App\Services\CompetencyAIService;
 
 class CompetencyController extends Controller
 {
+    public function generateAIPlan($employeeId, CompetencyAIService $aiService)
+    {
+        // $employeeId passed from route is likely the 'employee_id' string (e.g. EMP001)
+        // But our Service expects the ID from the `employees` table or we need to look it up.
+        // Let's check how analyticsData uses it. It uses $emp->employee_id for the frontend ID.
+        // So we should find the employee by that.
+        
+        $employee = Employee::where('employee_id', $employeeId)->first();
+        if (!$employee) {
+             // Fallback if passed numeric ID
+             $employee = Employee::find($employeeId);
+        }
+        
+        if (!$employee) {
+            return response()->json(['error' => 'Employee not found'], 404);
+        }
+
+        $plan = $aiService->generateDevelopmentPlan($employee->id);
+        return response()->json($plan);
+    }
+
+    public function chatAI(Request $request, $employeeId, CompetencyAIService $aiService)
+    {
+        $request->validate([
+            'message' => 'required|string|max:500'
+        ]);
+
+        $employee = Employee::where('employee_id', $employeeId)->first();
+        if (!$employee) {
+             $employee = Employee::find($employeeId);
+        }
+        
+        if (!$employee) {
+            return response()->json(['error' => 'Employee not found'], 404);
+        }
+
+        $response = $aiService->chatWithPlan($employee->id, $request->input('message'));
+        
+        return response()->json(['reply' => $response]);
+    }
+
     public function main()
     {
         $total = Competency::count();
@@ -120,8 +162,8 @@ class CompetencyController extends Controller
         $data = $employees->map(function ($emp) {
             $empCompetencies = EmployeeCompetency::where('employee_id', $emp->id)->get();
             
-            $roleName = $emp->position ?? 'Unknown';
-            $jobRole = JobRole::where('name', $roleName)->with('competencies')->first();
+            $jobRole = $emp->jobRole;
+            $roleName = $jobRole ? $jobRole->name : 'Unknown';
             
             $compData = [];
             $roleCompetencies = $jobRole ? $jobRole->competencies : collect([]);

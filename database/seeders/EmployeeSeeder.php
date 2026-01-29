@@ -39,7 +39,7 @@ class EmployeeSeeder extends Seeder
                 'last_name' => $faker->lastName,
                 'email' => $faker->unique()->safeEmail,
                 'department' => 'IT',
-                'position' => $role->name,
+                'job_role_id' => $role->id,
                 'status' => 'Active',
                 'date_hired' => now()->subMonths(rand(1, 24)),
             ]);
@@ -51,7 +51,6 @@ class EmployeeSeeder extends Seeder
                     'competency_id' => $comp->id,
                     'current_proficiency' => rand(1, 5), // Assuming 1-5 scale
                     'target_proficiency' => rand(3, 5),
-                    'gap_score' => 0, // Will be calculated dynamically or updated later
                     'priority' => 'Normal',
                     'status' => 'Active',
                 ]);

@@ -3,279 +3,443 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive HR Insights Dashboard</title>
+    <title>Training Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    @vite('resources/css/dashboard/dashboard.css')
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-900 min-h-screen">
+<body class="bg-slate-50 text-slate-900 min-h-screen">
     @include('partials.admin-sidebar')
 
-    <div class="main-content">
-        <main class="p-6 lg:p-12 max-w-[1600px] mx-auto">
-            <!-- Dashboard Intro -->
-            <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+    <div class="main-content ml-0 md:ml-64 transition-all duration-300">
+        <main class="max-w-7xl mx-auto p-4 md:p-8" 
+              x-data="{ 
+                  storageUrl: '{{ asset('storage') }}',
+                  activeTab: 'published',
+                  search: '',
+                  scopeFilter: 'all',
+                  createModalOpen: false,
+                  viewModalOpen: false,
+                  startModalOpen: false,
+                  otp: '',
+                  otpSent: false,
+                  otpLoading: false,
+                  selectedTraining: null,
+                  courses: {{ $courses->toJson() }},
+                  selectedCourseId: '',
+                  trainingType: 'physical',
+                  async sendOtp() {
+                      if (!this.selectedTraining) return;
+                      this.otpLoading = true;
+                      try {
+                          const response = await fetch('{{ route('training.send-otp') }}', {
+                              method: 'POST',
+                              headers: {
+                                  'Content-Type': 'application/json',
+                                  'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                              },
+                              body: JSON.stringify({ training_id: this.selectedTraining.id })
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                              this.otpSent = true;
+                              alert(data.message);
+                          } else {
+                              alert(data.message);
+                          }
+                      } catch (error) {
+                          console.error('Error:', error);
+                          alert('Failed to send OTP. Please try again.');
+                      } finally {
+                          this.otpLoading = false;
+                      }
+                  },
+                  get courseSkills() {
+                      if(!this.selectedCourseId) return [];
+                      const course = this.courses.find(c => c.id == this.selectedCourseId);
+                      return course ? course.competencies : [];
+                  },
+                  get courseAssessments() {
+                      if(!this.selectedCourseId) return [];
+                      const course = this.courses.find(c => c.id == this.selectedCourseId);
+                      return course && course.assessments ? course.assessments : [];
+                  },
+                  get filteredPublished() {
+                      const trainings = {{ $publishedTrainings->toJson() }};
+                      return trainings.filter(t => {
+                          const title = t.title ? t.title.toLowerCase() : '';
+                          const orgScope = t.org_scope ? t.org_scope.toLowerCase() : '';
+                          const search = this.search.toLowerCase();
+                          const filter = this.scopeFilter.toLowerCase();
+                          
+                          const matchesSearch = title.includes(search);
+                          const matchesScope = this.scopeFilter === 'all' || orgScope === filter;
+                          return matchesSearch && matchesScope;
+                      });
+                  },
+                  get filteredPre() {
+                      const trainings = {{ $preTrainings->toJson() }};
+                      return trainings.filter(t => {
+                          const title = t.title ? t.title.toLowerCase() : '';
+                          const orgScope = t.org_scope ? t.org_scope.toLowerCase() : '';
+                          const search = this.search.toLowerCase();
+                          const filter = this.scopeFilter.toLowerCase();
+
+                          const matchesSearch = title.includes(search);
+                          const matchesScope = this.scopeFilter === 'all' || orgScope === filter;
+                          return matchesSearch && matchesScope;
+                      });
+                  },
+                  formatDate(dateStr) {
+                      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  },
+                  checkStartDate(dateStr) {
+                      return new Date(dateStr) <= new Date();
+                  }
+              }">
+
+            <!-- Header -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <div class="flex items-center space-x-3 mb-4">            </div>
-                    <h1 class="text-4xl font-black text-slate-900 tracking-tight">Drivers' Training</h1>
-                    <p class="text-slate-500 mt-2 font-medium text-lg">Workforce strategic oversight and development analytics.</p>
+                    <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <i class='bx bx-calendar-event text-blue-600'></i> Training Management
+                    </h1>
+                    <p class="text-slate-500 text-sm mt-1">Manage training schedules, participants, and analytics.</p>
                 </div>
-              
-                
+                <button @click="createModalOpen = true" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-100 flex items-center gap-2 transition-all">
+                    <i class='bx bx-plus'></i> Create Schedule
+                </button>
             </div>
 
-            <!-- KPI Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <!-- KPI 1 -->
-                <div class="bg-white p-6 rounded-[28px] border border-slate-100 card-hover">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-3 rounded-2xl bg-blue-50 text-blue-600">
-                            <i class="fas fa-award text-xl"></i>
-                        </div>
-                        <div class="flex items-center text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-lg">
-                            <i class="fas fa-arrow-up mr-1"></i> 2.4%
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-400 font-black uppercase tracking-widest">Skill Proficiency</p>
-                    <h3 class="text-3xl font-black mt-1 text-slate-800">78.4%</h3>
+            <!-- Controls -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <!-- Tabs -->
+                <div class="flex bg-slate-100 p-1 rounded-xl">
+                    <button @click="activeTab = 'published'" :class="activeTab === 'published' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">Published</button>
+                    <button @click="activeTab = 'pre'" :class="activeTab === 'pre' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">Pre-Training</button>
+                    <button @click="activeTab = 'analytics'" :class="activeTab === 'analytics' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'" class="px-4 py-2 rounded-lg text-sm font-bold transition-all">Analytics</button>
                 </div>
-                <!-- KPI 2 -->
-                <div class="bg-white p-6 rounded-[28px] border border-slate-100 card-hover">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-3 rounded-2xl bg-emerald-50 text-emerald-600">
-                            <i class="fas fa-book-open text-xl"></i>
-                        </div>
-                        <div class="flex items-center text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-lg">
-                            <i class="fas fa-arrow-up mr-1"></i> 12%
-                        </div>
+
+                <!-- Filters -->
+                <div class="flex gap-3 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <i class='bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400'></i>
+                        <input x-model="search" type="text" placeholder="Search training..." class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
-                    <p class="text-xs text-slate-400 font-black uppercase tracking-widest">Active Learners</p>
-                    <h3 class="text-3xl font-black mt-1 text-slate-800">1,248</h3>
-                </div>
-                <!-- KPI 3 -->
-                <div class="bg-white p-6 rounded-[28px] border border-slate-100 card-hover">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-3 rounded-2xl bg-purple-50 text-purple-600">
-                            <i class="fas fa-chart-line text-xl"></i>
-                        </div>
-                        <div class="flex items-center text-rose-500 text-xs font-bold bg-rose-50 px-2 py-1 rounded-lg">
-                            <i class="fas fa-arrow-down mr-1"></i> 0.02
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-400 font-black uppercase tracking-widest">Bench Strength</p>
-                    <h3 class="text-3xl font-black mt-1 text-slate-800">0.85</h3>
-                </div>
-                <!-- KPI 4 -->
-                <div class="bg-white p-6 rounded-[28px] border border-slate-100 card-hover">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-3 rounded-2xl bg-orange-50 text-orange-600">
-                            <i class="fas fa-user-check text-xl"></i>
-                        </div>
-                        <div class="flex items-center text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-lg">
-                            <i class="fas fa-arrow-up mr-1"></i> 1.5%
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-400 font-black uppercase tracking-widest">Talent Retention</p>
-                    <h3 class="text-3xl font-black mt-1 text-slate-800">94.2%</h3>
+                    <select x-model="scopeFilter" class="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="all">All Scopes</option>
+                        <option value="internal">Internal</option>
+                        <option value="departmental">Departmental</option>
+                        <option value="public">Public</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Competency Chart -->
-                <section class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm lg:col-span-2">
-                    <div class="flex justify-between items-center mb-10">
-                        <div>
-                            <h2 class="font-black text-2xl text-slate-900">Competency Matrix</h2>
-                            <p class="text-slate-500 font-medium">Visualizing skill gaps across core domains</p>
-                        </div>
-                        <div class="flex space-x-4 text-xs font-bold">
-                            <div class="flex items-center space-x-1.5 text-slate-600">
-                                <span class="w-3 h-3 rounded-full bg-blue-600"></span>
-                                <span>Actual</span>
-                            </div>
-                            <div class="flex items-center space-x-1.5 text-slate-600">
-                                <span class="w-3 h-3 rounded-full bg-slate-200"></span>
-                                <span>Benchmark</span>
+            <!-- Tab 1: Published Training -->
+            <div x-show="activeTab === 'published'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" x-transition>
+                <template x-for="training in filteredPublished" :key="training.id">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden group">
+                        <div class="h-40 bg-slate-100 relative overflow-hidden">
+                            <template x-if="training.course.picture">
+                                <img :src="storageUrl + '/' + training.course.picture" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            </template>
+                            <template x-if="!training.course.picture">
+                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-200">
+                                    <i class='bx bxs-image text-4xl'></i>
+                                </div>
+                            </template>
+                            <div class="absolute top-3 right-3">
+                                <span class="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded shadow-sm uppercase tracking-wider">Published</span>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="space-y-8" id="competency-container">
-                        <!-- Javascript will inject content here for demo purposes -->
-                    </div>
-                </section>
-
-                <!-- Learning Engagement -->
-                <section class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                    <h2 class="font-black text-2xl text-slate-900 mb-2">Learning Pulse</h2>
-                    <p class="text-sm text-slate-500 mb-8 font-medium">Course engagement over last 30 days</p>
-                    
-                    <div class="space-y-6" id="learning-container">
-                        <!-- Trends injected here -->
-                    </div>
-                </section>
-
-                <!-- Succession Planning Table -->
-                <section class="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm lg:col-span-3">
-                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-10 gap-4">
-                        <div>
-                            <h2 class="font-black text-2xl text-slate-900">Succession Pipeline</h2>
-                            <p class="text-slate-500 font-medium">Critical role candidates and readiness status</p>
-                        </div>
-                        <div class="flex bg-slate-100 p-1.5 rounded-xl self-start">
-                            <button class="px-4 py-2 text-xs font-bold bg-white rounded-lg shadow-sm">High Potential</button>
-                            <button class="px-4 py-2 text-xs font-bold text-slate-500">Ready Now</button>
+                        <div class="p-5">
+                            <h3 class="font-bold text-slate-800 text-lg mb-2 line-clamp-1" x-text="training.title"></h3>
+                            <div class="flex items-center gap-4 text-xs text-slate-500 mb-4 font-medium">
+                                <div class="flex items-center gap-1"><i class='bx bx-group'></i> <span x-text="training.capacity + ' Capacity'"></span></div>
+                                <div class="flex items-center gap-1"><i class='bx bx-user-check'></i> <span x-text="training.participants.length + ' Enrolled'"></span></div>
+                            </div>
+                            <button @click="selectedTraining = training; viewModalOpen = true" class="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors">View Details</button>
                         </div>
                     </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead>
-                                <tr class="text-[11px] text-slate-400 font-black uppercase tracking-widest border-b border-slate-100">
-                                    <th class="pb-6 px-4">Talent Profile</th>
-                                    <th class="pb-6">Current Role Fit</th>
-                                    <th class="pb-6">Potential</th>
-                                    <th class="pb-6">Overall Score</th>
-                                    <th class="pb-6 text-right">Readiness</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50" id="succession-table">
-                                <!-- Injected rows -->
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                </template>
+                <div x-show="filteredPublished.length === 0" class="col-span-full text-center py-20 text-slate-400">
+                    <i class='bx bx-calendar-x text-5xl mb-3'></i>
+                    <p>No published trainings found.</p>
+                </div>
             </div>
+
+            <!-- Tab 2: Pre-Training -->
+            <div x-show="activeTab === 'pre'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" x-transition x-cloak>
+                <template x-for="training in filteredPre" :key="training.id">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden group">
+                        <div class="h-40 bg-slate-100 relative overflow-hidden">
+                             <template x-if="training.course.picture">
+                                <img :src="storageUrl + '/' + training.course.picture" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            </template>
+                            <template x-if="!training.course.picture">
+                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-200">
+                                    <i class='bx bxs-image text-4xl'></i>
+                                </div>
+                            </template>
+                            <div class="absolute top-3 right-3">
+                                <span class="bg-amber-400 text-white text-xs font-bold px-2 py-1 rounded shadow-sm uppercase tracking-wider">Pre-Training</span>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <h3 class="font-bold text-slate-800 text-lg mb-1 line-clamp-1" x-text="training.title"></h3>
+                            <p class="text-xs text-slate-400 font-bold mb-4" x-text="'Starts: ' + formatDate(training.start_date)"></p>
+                            
+                            <div class="flex items-center gap-4 text-xs text-slate-500 mb-4 font-medium">
+                                <div class="flex items-center gap-1"><i class='bx bx-group'></i> <span x-text="training.capacity + ' Capacity'"></span></div>
+                                <div class="flex items-center gap-1"><i class='bx bx-user-check'></i> <span x-text="training.participants.length + ' Enrolled'"></span></div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button @click="selectedTraining = training; startModalOpen = true" class="py-2 rounded-lg bg-rose-50 text-rose-600 font-bold text-xs hover:bg-rose-100 transition-colors flex items-center justify-center gap-1">
+                                    <i class='bx bx-rocket'></i> Immediate Start
+                                </button>
+                                <form :action="'/training/' + training.id + '/start'" method="POST">
+                                    @csrf
+                                    <button type="submit" :disabled="!checkStartDate(training.start_date)" class="w-full py-2 rounded-lg bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+                                        <i class='bx bx-play'></i> Start
+                                    </button>
+                                </form>
+                            </div>
+                            <button @click="selectedTraining = training; viewModalOpen = true" class="w-full py-2 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors">View Details</button>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="filteredPre.length === 0" class="col-span-full text-center py-20 text-slate-400">
+                    <i class='bx bx-calendar-event text-5xl mb-3'></i>
+                    <p>No upcoming pre-trainings found.</p>
+                </div>
+            </div>
+
+            <!-- Tab 3: Analytics -->
+            <div x-show="activeTab === 'analytics'" class="space-y-4" x-transition x-cloak>
+                @foreach($analytics as $stat)
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-6">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-bold text-slate-800">{{ $stat['title'] }}</h3>
+                            <span class="text-xs font-bold text-slate-500">{{ $stat['participants'] }} / {{ $stat['capacity'] }} Participants</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                            <div class="bg-blue-600 h-full rounded-full transition-all duration-1000" style="width: {{ $stat['progress'] }}%"></div>
+                        </div>
+                        <div class="flex justify-between mt-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                            <span>Duration: {{ $stat['duration'] }}</span>
+                            <span>{{ $stat['progress'] }}% Complete</span>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+                @if($analytics->isEmpty())
+                    <div class="text-center py-20 text-slate-400">
+                        <i class='bx bx-stats text-5xl mb-3'></i>
+                        <p>No analytics data available.</p>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Create Schedule Modal -->
+            <div x-show="createModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" x-cloak>
+                <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" @click.away="createModalOpen = false">
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <h3 class="font-bold text-lg text-slate-800">Schedule New Training</h3>
+                        <button @click="createModalOpen = false" class="text-slate-400 hover:text-slate-600"><i class='bx bx-x text-2xl'></i></button>
+                    </div>
+                    <div class="p-6 overflow-y-auto custom-scrollbar">
+                        <form action="{{ route('training.store') }}" method="POST" class="space-y-4">
+                            @csrf
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Training Title</label>
+                                    <input type="text" name="title" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Course</label>
+                                    <select name="course_id" x-model="selectedCourseId" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                        <option value="">Select a Course</option>
+                                        <template x-for="course in courses" :key="course.id">
+                                            <option :value="course.id" x-text="course.title"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Training Type</label>
+                                    <select name="training_type" x-model="trainingType" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                        <option value="physical">Physical Training</option>
+                                        <option value="online_exam">Online Exam</option>
+                                        <option value="both">Both</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2" x-show="trainingType === 'online_exam' || trainingType === 'both'" x-transition>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Assessment (Exam)</label>
+                                    <select name="assessment_id" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" :required="trainingType === 'online_exam' || trainingType === 'both'">
+                                        <option value="">Select an Exam</option>
+                                        <template x-for="assessment in courseAssessments" :key="assessment.id">
+                                            <option :value="assessment.id" x-text="assessment.title"></option>
+                                        </template>
+                                    </select>
+                                    <p x-show="courseAssessments.length === 0 && selectedCourseId" class="text-xs text-red-500 mt-1">No assessments found for this course.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
+                                    <input type="datetime-local" name="start_date" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
+                                    <input type="datetime-local" name="end_date" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Capacity</label>
+                                    <input type="number" name="capacity" required min="1" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Duration</label>
+                                    <div class="flex gap-2">
+                                        <input type="number" name="duration_value" required min="1" placeholder="e.g. 2" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                        <select name="duration_unit" class="w-24 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                            <option value="Hours">Hours</option>
+                                            <option value="Days">Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Organizational Scope</label>
+                                    <select name="org_scope" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                        <option value="Internal">Internal</option>
+                                        <option value="Departmental">Departmental</option>
+                                        <option value="Public">Public</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Proficiency</label>
+                                    <select name="proficiency" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                        <option value="Beginner">Beginner</option>
+                                        <option value="Intermediate">Intermediate</option>
+                                        <option value="Advanced">Advanced</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2" x-show="courseSkills.length > 0">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Skills (from Course)</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="skill in courseSkills" :key="skill.id">
+                                            <span class="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg" x-text="skill.name"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                                    <textarea name="description" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"></textarea>
+                                </div>
+                            </div>
+                            <div class="pt-4 flex justify-end gap-3">
+                                <button type="button" @click="createModalOpen = false" class="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                                <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all">Create Schedule</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Details Modal -->
+            <div x-show="viewModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" x-cloak>
+                <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" @click.away="viewModalOpen = false">
+                    <div class="h-32 bg-slate-100 relative">
+                        <template x-if="selectedTraining && selectedTraining.course && selectedTraining.course.picture">
+                            <img :src="storageUrl + '/' + selectedTraining.course.picture" class="w-full h-full object-cover">
+                        </template>
+                        <button @click="viewModalOpen = false" class="absolute top-4 right-4 bg-white/90 text-slate-800 p-2 rounded-full shadow-sm hover:bg-white"><i class='bx bx-x text-lg'></i></button>
+                    </div>
+                    <template x-if="selectedTraining">
+                        <div class="p-6">
+                            <div class="flex items-center gap-2 mb-2">
+                                 <span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-wider rounded-lg" x-text="selectedTraining.org_scope"></span>
+                                 <span class="px-2 py-1 bg-purple-50 text-purple-600 text-[10px] font-bold uppercase tracking-wider rounded-lg" x-text="selectedTraining.proficiency"></span>
+                            </div>
+                            <h3 class="font-bold text-2xl text-slate-800 mb-1" x-text="selectedTraining.title"></h3>
+                            <p class="text-slate-500 text-sm font-medium mb-6" x-text="'Course: ' + (selectedTraining.course ? selectedTraining.course.title : 'N/A')"></p>
+
+                            <div class="grid grid-cols-2 gap-y-4 gap-x-8 text-sm">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-400 uppercase">Capacity</p>
+                                    <p class="font-bold text-slate-700" x-text="selectedTraining.capacity"></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-400 uppercase">Participants</p>
+                                    <p class="font-bold text-slate-700" x-text="selectedTraining.participants ? selectedTraining.participants.length : 0"></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-400 uppercase">Duration</p>
+                                    <p class="font-bold text-slate-700" x-text="selectedTraining.duration"></p>
+                                </div>
+                                 <div>
+                                    <p class="text-xs font-bold text-slate-400 uppercase">Status</p>
+                                    <p class="font-bold text-slate-700 capitalize" x-text="selectedTraining.status ? selectedTraining.status.replace('_', ' ') : ''"></p>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-6 border-t border-slate-100">
+                                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Skills Assessed</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="skill in (selectedTraining.course && selectedTraining.course.competencies ? selectedTraining.course.competencies : [])" :key="skill.id">
+                                        <span class="px-2 py-1 border border-slate-200 text-slate-600 text-xs font-bold rounded-lg" x-text="skill.name"></span>
+                                    </template>
+                                    <template x-if="!selectedTraining.course || !selectedTraining.course.competencies || selectedTraining.course.competencies.length === 0">
+                                        <span class="text-slate-400 text-xs italic">No specific skills listed.</span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Immediately Start OTP Modal -->
+            <div x-show="startModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" x-cloak>
+                <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6" @click.away="startModalOpen = false">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                            <i class='bx bx-error'></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-800">Start Immediately?</h3>
+                        <p class="text-slate-500 text-xs mt-2">This will bypass the scheduled start time. Please enter the authorization code to proceed.</p>
+                    </div>
+                    
+                    <form :action="'/training/' + (selectedTraining ? selectedTraining.id : '') + '/start'" method="POST">
+                        @csrf
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase">Authorization Code</label>
+                                <button type="button" @click="sendOtp()" :disabled="otpLoading" class="text-xs font-bold text-amber-500 hover:text-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    <span x-show="!otpLoading && !otpSent">Send Code to Email</span>
+                                    <span x-show="otpLoading">Sending...</span>
+                                    <span x-show="!otpLoading && otpSent">Resend Code</span>
+                                </button>
+                            </div>
+                            <input type="text" name="otp" required placeholder="OTP" class="w-full text-center tracking-[1em] font-mono text-lg px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none uppercase">
+                        </div>
+                        <div class="flex gap-3">
+                            <button type="button" @click="startModalOpen = false" class="flex-1 px-4 py-2.5 text-slate-500 font-bold text-sm bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
+                            <button type="submit" class="flex-1 px-4 py-2.5 bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 rounded-xl shadow-lg shadow-amber-100 transition-colors">Confirm Start</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </main>
     </div>
-
-    <script>
-        // Data Configuration
-        const competencies = [
-            { name: 'Strategic Leadership', actual: 85, target: 90 },
-            { name: 'Data Science & AI', actual: 58, target: 80 },
-            { name: 'Agile Operations', actual: 92, target: 85 },
-            { name: 'Digital Fluency', actual: 74, target: 95 }
-        ];
-
-        const learningTrends = [
-            { title: 'AI Ethics in HR', status: 'Mandatory', progress: 65, color: '#3b82f6', trend: [10, 30, 25, 45, 60, 65] },
-            { title: 'Remote Management', status: 'Core', progress: 88, color: '#10b981', trend: [20, 40, 60, 75, 80, 88] },
-            { title: 'Project Scoping', status: 'Optional', progress: 42, color: '#8b5cf6', trend: [5, 10, 15, 20, 35, 42] }
-        ];
-
-        const candidates = [
-            { name: 'Alex Rivera', role: 'Senior Product Manager', pot: 'High', score: 94, window: 'Ready Now', avatar: 'AR' },
-            { name: 'Jordan Smith', role: 'Team Lead Eng', pot: 'High', score: 88, window: '1-2 Years', avatar: 'JS' },
-            { name: 'Maria Garcia', role: 'Head of Operations', pot: 'Medium', score: 79, window: '2-3 Years', avatar: 'MG' },
-            { name: 'Sam Chen', role: 'Director of Growth', pot: 'High', score: 91, window: 'Ready Now', avatar: 'SC' }
-        ];
-
-        // Generator Functions
-        function initCompetencies() {
-            const container = document.getElementById('competency-container');
-            container.innerHTML = competencies.map(c => `
-                <div class="group">
-                    <div class="flex justify-between items-end mb-3">
-                        <span class="text-sm font-black text-slate-800">${c.name}</span>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-bold text-slate-400">vs Target ${c.target}%</span>
-                            <span class="text-sm font-black text-blue-600">${c.actual}%</span>
-                        </div>
-                    </div>
-                    <div class="h-5 bg-slate-100 rounded-full relative overflow-hidden">
-                        <div class="absolute top-0 bottom-0 border-r-2 border-slate-300 z-10 opacity-60" style="left: ${c.target}%"></div>
-                        <div class="h-full rounded-full bg-gradient-to-r ${c.actual >= c.target ? 'from-emerald-400 to-emerald-600' : 'from-blue-500 to-indigo-600'} transition-all duration-1000" style="width: ${c.actual}%"></div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function generateSparkline(data, color) {
-            const max = Math.max(...data);
-            const width = 120;
-            const height = 40;
-            const points = data.map((d, i) => `${(i / (data.length - 1)) * width},${height - (d / max * height)}`).join(' ');
-            return `
-                <svg width="${width}" height="${height}" class="overflow-visible">
-                    <polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${points}" />
-                </svg>
-            `;
-        }
-
-        function initLearning() {
-            const container = document.getElementById('learning-container');
-            container.innerHTML = learningTrends.map(l => `
-                <div class="p-5 rounded-3xl border border-slate-50 bg-slate-50/40 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-default">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h4 class="text-sm font-black text-slate-800 mb-1">${l.title}</h4>
-                            <span class="text-[10px] font-bold uppercase tracking-widest text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md">${l.status}</span>
-                        </div>
-                        ${generateSparkline(l.trend, l.color)}
-                    </div>
-                    <div class="flex justify-between items-center text-xs font-bold">
-                        <span class="text-slate-400">Progress</span>
-                        <span class="text-slate-900">${l.progress}%</span>
-                    </div>
-                    <div class="w-full h-1.5 bg-slate-200 rounded-full mt-2">
-                        <div class="h-full bg-slate-800 rounded-full" style="width: ${l.progress}%"></div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function initSuccession() {
-            const tbody = document.getElementById('succession-table');
-            tbody.innerHTML = candidates.map((p, i) => `
-                <tr class="group hover:bg-slate-50/80 transition-all cursor-pointer">
-                    <td class="py-6 px-4">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-11 h-11 rounded-2xl bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center text-slate-600 font-black text-sm">
-                                ${p.avatar}
-                            </div>
-                            <div>
-                                <p class="text-sm font-black text-slate-800">${p.name}</p>
-                                <p class="text-[11px] text-slate-400 font-bold uppercase tracking-tighter">Emp ID: 0092${i}</p>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="py-6">
-                        <p class="text-sm font-bold text-slate-700">${p.role}</p>
-                        <div class="flex items-center space-x-1 mt-1.5">
-                            ${[1,2,3,4,5].map(s => `<div class="w-1.5 h-1.5 rounded-full ${s <= 4 ? 'bg-amber-400' : 'bg-slate-200'}"></div>`).join('')}
-                        </div>
-                    </td>
-                    <td class="py-6">
-                        <span class="text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest ${p.pot === 'High' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">
-                            ${p.pot}
-                        </span>
-                    </td>
-                    <td class="py-6">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-slate-800" style="width: ${p.score}%"></div>
-                            </div>
-                            <span class="text-xs font-black text-slate-900">${p.score}</span>
-                        </div>
-                    </td>
-                    <td class="py-6 text-right">
-                        <div class="inline-flex items-center space-x-2 bg-white border border-slate-100 px-4 py-2 rounded-2xl shadow-sm group-hover:border-blue-200 transition-all">
-                            <span class="text-xs font-black text-slate-800">${p.window}</span>
-                            <i class="fas fa-chevron-right text-[10px] text-slate-300 group-hover:text-blue-500 transition-colors"></i>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // Initialize Everything
-        window.onload = () => {
-            initCompetencies();
-            initLearning();
-            initSuccession();
-        };
-    </script>
+    
+    <!-- Ion Icons -->
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </body>

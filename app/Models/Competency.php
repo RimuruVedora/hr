@@ -21,4 +21,9 @@ class Competency extends Model
     {
         return $this->belongsToMany(JobRole::class, 'job_role_competency');
     }
+
+    public function assessments()
+    {
+        return $this->belongsToMany(Assessment::class, 'assessment_competency');
+    }
 }

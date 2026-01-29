@@ -13,7 +13,7 @@ class Employee extends Model
         'last_name',
         'email',
         'department',
-        'position',
+        'job_role_id',
         'status',
         'date_hired',
     ];
@@ -26,6 +26,11 @@ class Employee extends Model
         return Attribute::make(
             get: fn (mixed $value, array $attributes) => $attributes['first_name'] . ' ' . $attributes['last_name'],
         );
+    }
+
+    public function jobRole()
+    {
+        return $this->belongsTo(JobRole::class);
     }
 
     public function competencies()
