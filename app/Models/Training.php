@@ -19,6 +19,7 @@ class Training extends Model
         'status',
         'training_type',
         'assessment_id',
+        'location',
     ];
 
     protected $casts = [

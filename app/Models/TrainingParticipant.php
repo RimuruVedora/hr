@@ -10,6 +10,8 @@ class TrainingParticipant extends Model
         'training_id',
         'employee_id',
         'status',
+        'grade',
+        'remarks',
     ];
 
     public function training()

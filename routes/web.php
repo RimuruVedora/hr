@@ -7,6 +7,9 @@ use App\Http\Controllers\JobRoleController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\LearningCourseController;
 use App\Http\Controllers\LearningAssessmentController;
+use App\Http\Controllers\EmployeeDashboardController;
+
+use App\Http\Controllers\SuccessionPlanController;
 
 // Explicit GET handlers to avoid 405 on some Apache/XAMPP setups
 Route::get('/', function () {
@@ -27,6 +30,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/dashboard', function () {
         return view('dashboard.admin-dashboard');
     })->name('admin.dashboard');
+
+    Route::get('/employee/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
 
     Route::get('/user-management', [UserManagementController::class, 'index'])->name('user.management');
     Route::get('/api/users', [UserManagementController::class, 'getUsers'])->name('api.users');
@@ -51,9 +56,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Training Routes
     Route::get('/training/schedule', [App\Http\Controllers\TrainingController::class, 'index'])->name('training.schedule');
+    Route::get('/training/evaluation', [App\Http\Controllers\TrainingController::class, 'evaluation'])->name('training.evaluation');
+    Route::get('/training/{id}/participants', [App\Http\Controllers\TrainingController::class, 'getParticipants'])->name('training.participants');
+    Route::post('/training/grade', [App\Http\Controllers\TrainingController::class, 'updateGrade'])->name('training.grade.update');
     Route::post('/training/schedule', [App\Http\Controllers\TrainingController::class, 'store'])->name('training.store');
     Route::post('/training/{id}/start', [App\Http\Controllers\TrainingController::class, 'start'])->name('training.start');
     Route::post('/training/send-otp', [App\Http\Controllers\TrainingController::class, 'sendOtp'])->name('training.send-otp');
+    Route::post('/training/{id}/enroll', [App\Http\Controllers\TrainingController::class, 'enroll'])->name('training.enroll');
 
     // Learning Routes (Courses)
     Route::get('/learning/courses', [LearningCourseController::class, 'index'])->name('learning.courses');
@@ -62,8 +71,18 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/learning/courses/{id}/status', [LearningCourseController::class, 'updateStatus'])->name('learning.courses.status');
 
     // Learning Routes (Assessments)
+    Route::get('/learning/my-assessments', [LearningAssessmentController::class, 'employeeAssessments'])->name('learning.employee.assessments');
+    Route::get('/learning/exams', [App\Http\Controllers\EmployeeExamController::class, 'index'])->name('employee.exams');
+    Route::get('/learning/exam/start/{trainingId}', [App\Http\Controllers\EmployeeExamController::class, 'start'])->name('exam.start');
+    Route::get('/learning/exam/take/{attemptId}', [App\Http\Controllers\EmployeeExamController::class, 'take'])->name('exam.take');
+    Route::post('/learning/exam/submit/{attemptId}', [App\Http\Controllers\EmployeeExamController::class, 'submit'])->name('exam.submit');
+
     Route::get('/learning/assessments', [LearningAssessmentController::class, 'index'])->name('learning.assessments');
     Route::post('/learning/assessments', [LearningAssessmentController::class, 'store'])->name('learning.assessments.store');
     Route::delete('/learning/assessments/{id}', [LearningAssessmentController::class, 'destroy'])->name('learning.assessments.destroy');
     Route::get('/learning/assessment-scores', [LearningAssessmentController::class, 'scores'])->name('learning.assessment-scores');
+
+    // Succession Planning Routes
+    Route::get('/succession-plans', [SuccessionPlanController::class, 'index'])->name('succession.plans');
+    Route::get('/talent-assessment', [SuccessionPlanController::class, 'talentAssessment'])->name('talent.assessment');
 });

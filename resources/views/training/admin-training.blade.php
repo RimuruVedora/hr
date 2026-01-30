@@ -25,7 +25,7 @@
                   activeTab: 'published',
                   search: '',
                   scopeFilter: 'all',
-                  createModalOpen: false,
+                  createModalOpen: {{ $errors->any() ? 'true' : 'false' }},
                   viewModalOpen: false,
                   startModalOpen: false,
                   otp: '',
@@ -33,8 +33,8 @@
                   otpLoading: false,
                   selectedTraining: null,
                   courses: {{ $courses->toJson() }},
-                  selectedCourseId: '',
-                  trainingType: 'physical',
+                  selectedCourseId: '{{ old('course_id') }}',
+                  trainingType: '{{ old('training_type', 'physical') }}',
                   async sendOtp() {
                       if (!this.selectedTraining) return;
                       this.otpLoading = true;
@@ -262,72 +262,88 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="col-span-2">
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Training Title</label>
-                                    <input type="text" name="title" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                    <input type="text" name="title" value="{{ old('title') }}" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm @error('title') border-red-500 @enderror">
+                                    @error('title') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="col-span-2">
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Course</label>
-                                    <select name="course_id" x-model="selectedCourseId" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                    <select name="course_id" x-model="selectedCourseId" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white @error('course_id') border-red-500 @enderror">
                                         <option value="">Select a Course</option>
                                         <template x-for="course in courses" :key="course.id">
-                                            <option :value="course.id" x-text="course.title"></option>
+                                            <option :value="course.id" x-text="course.title" :selected="course.id == '{{ old('course_id') }}'"></option>
                                         </template>
                                     </select>
+                                    @error('course_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="col-span-2">
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Training Type</label>
-                                    <select name="training_type" x-model="trainingType" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                    <select name="training_type" x-model="trainingType" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white @error('training_type') border-red-500 @enderror">
                                         <option value="physical">Physical Training</option>
                                         <option value="online_exam">Online Exam</option>
                                         <option value="both">Both</option>
                                     </select>
+                                    @error('training_type') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="col-span-2" x-show="trainingType === 'online_exam' || trainingType === 'both'" x-transition>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Assessment (Exam)</label>
-                                    <select name="assessment_id" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" :required="trainingType === 'online_exam' || trainingType === 'both'">
+                                    <select name="assessment_id" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white @error('assessment_id') border-red-500 @enderror" :required="trainingType === 'online_exam' || trainingType === 'both'">
                                         <option value="">Select an Exam</option>
                                         <template x-for="assessment in courseAssessments" :key="assessment.id">
-                                            <option :value="assessment.id" x-text="assessment.title"></option>
+                                            <option :value="assessment.id" x-text="assessment.title" :selected="assessment.id == '{{ old('assessment_id') }}'"></option>
                                         </template>
                                     </select>
                                     <p x-show="courseAssessments.length === 0 && selectedCourseId" class="text-xs text-red-500 mt-1">No assessments found for this course.</p>
+                                    @error('assessment_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="col-span-2" x-show="trainingType === 'physical' || trainingType === 'both'" x-transition>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Location</label>
+                                    <input type="text" name="location" value="{{ old('location') }}" placeholder="e.g. Conference Room A or 123 Main St" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm @error('location') border-red-500 @enderror">
+                                    @error('location') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
-                                    <input type="datetime-local" name="start_date" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600">
+                                    <input type="datetime-local" name="start_date" value="{{ old('start_date') }}" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600 @error('start_date') border-red-500 @enderror">
+                                    @error('start_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
-                                    <input type="datetime-local" name="end_date" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600">
+                                    <input type="datetime-local" name="end_date" value="{{ old('end_date') }}" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-600 @error('end_date') border-red-500 @enderror">
+                                    @error('end_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Capacity</label>
-                                    <input type="number" name="capacity" required min="1" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                    <input type="number" name="capacity" value="{{ old('capacity') }}" required min="1" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm @error('capacity') border-red-500 @enderror">
+                                    @error('capacity') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Duration</label>
                                     <div class="flex gap-2">
-                                        <input type="number" name="duration_value" required min="1" placeholder="e.g. 2" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                                        <select name="duration_unit" class="w-24 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
-                                            <option value="Hours">Hours</option>
-                                            <option value="Days">Days</option>
+                                        <input type="number" name="duration_value" value="{{ old('duration_value') }}" required min="1" placeholder="e.g. 2" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm @error('duration_value') border-red-500 @enderror">
+                                        <select name="duration_unit" class="w-24 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white @error('duration_unit') border-red-500 @enderror">
+                                            <option value="Hours" {{ old('duration_unit') == 'Hours' ? 'selected' : '' }}>Hours</option>
+                                            <option value="Days" {{ old('duration_unit') == 'Days' ? 'selected' : '' }}>Days</option>
                                         </select>
                                     </div>
+                                    @error('duration_value') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                                    @error('duration_unit') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Organizational Scope</label>
-                                    <select name="org_scope" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
-                                        <option value="Internal">Internal</option>
-                                        <option value="Departmental">Departmental</option>
-                                        <option value="Public">Public</option>
+                                    <select name="org_scope" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white @error('org_scope') border-red-500 @enderror">
+                                        <option value="Internal" {{ old('org_scope') == 'Internal' ? 'selected' : '' }}>Internal</option>
+                                        <option value="Departmental" {{ old('org_scope') == 'Departmental' ? 'selected' : '' }}>Departmental</option>
+                                        <option value="Public" {{ old('org_scope') == 'Public' ? 'selected' : '' }}>Public</option>
                                     </select>
+                                    @error('org_scope') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Proficiency</label>
-                                    <select name="proficiency" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
-                                        <option value="Beginner">Beginner</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Advanced">Advanced</option>
+                                    <select name="proficiency" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white @error('proficiency') border-red-500 @enderror">
+                                        <option value="Beginner" {{ old('proficiency') == 'Beginner' ? 'selected' : '' }}>Beginner</option>
+                                        <option value="Intermediate" {{ old('proficiency') == 'Intermediate' ? 'selected' : '' }}>Intermediate</option>
+                                        <option value="Advanced" {{ old('proficiency') == 'Advanced' ? 'selected' : '' }}>Advanced</option>
                                     </select>
+                                    @error('proficiency') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="col-span-2" x-show="courseSkills.length > 0">
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Skills (from Course)</label>
@@ -339,7 +355,8 @@
                                 </div>
                                 <div class="col-span-2">
                                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
-                                    <textarea name="description" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"></textarea>
+                                    <textarea name="description" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm @error('description') border-red-500 @enderror">{{ old('description') }}</textarea>
+                                    @error('description') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                                 </div>
                             </div>
                             <div class="pt-4 flex justify-end gap-3">
@@ -386,6 +403,10 @@
                                     <p class="text-xs font-bold text-slate-400 uppercase">Status</p>
                                     <p class="font-bold text-slate-700 capitalize" x-text="selectedTraining.status ? selectedTraining.status.replace('_', ' ') : ''"></p>
                                 </div>
+                                <div x-show="selectedTraining.training_type === 'physical' || selectedTraining.training_type === 'both'">
+                                    <p class="text-xs font-bold text-slate-400 uppercase">Location</p>
+                                    <p class="font-bold text-slate-700" x-text="selectedTraining.location || 'N/A'"></p>
+                                </div>
                             </div>
 
                             <div class="mt-6 pt-6 border-t border-slate-100">
@@ -415,7 +436,7 @@
                         <p class="text-slate-500 text-xs mt-2">This will bypass the scheduled start time. Please enter the authorization code to proceed.</p>
                     </div>
                     
-                    <form :action="'/training/' + (selectedTraining ? selectedTraining.id : '') + '/start'" method="POST">
+                    <form :action="'{{ url('/training') }}/' + (selectedTraining ? selectedTraining.id : '') + '/start'" method="POST">
                         @csrf
                         <div class="mb-6">
                             <div class="flex justify-between items-center mb-2">

@@ -9,6 +9,7 @@ class Employee extends Model
 {
     protected $fillable = [
         'employee_id',
+        'account_id',
         'first_name',
         'last_name',
         'email',
@@ -36,5 +37,20 @@ class Employee extends Model
     public function competencies()
     {
         return $this->hasMany(EmployeeCompetency::class);
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class, 'account_id', 'Login_ID');
+    }
+
+    public function trainingParticipants()
+    {
+        return $this->hasMany(TrainingParticipant::class);
+    }
+
+    public function employeeAssessments()
+    {
+        return $this->hasMany(EmployeeAssessment::class);
     }
 }

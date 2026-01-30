@@ -14,6 +14,15 @@ class AuthController extends Controller
 {
     public function showLogin()
     {
+        if (Auth::check()) {
+            $account = Auth::user();
+            if ($account->Account_Type == 1) {
+                return redirect()->route('admin.dashboard');
+            } elseif ($account->Account_Type == 2) {
+                return redirect()->route('employee.dashboard');
+            }
+            return redirect('/');
+        }
         return view('auth.login');
     }
 
@@ -173,6 +182,8 @@ class AuthController extends Controller
         // Redirect based on account type
         if ($account->Account_Type == 1) {
             return redirect()->route('admin.dashboard');
+        } elseif ($account->Account_Type == 2) {
+            return redirect()->route('employee.dashboard');
         }
 
         return redirect('/'); // Fallback for other users

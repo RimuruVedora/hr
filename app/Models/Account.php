@@ -18,9 +18,26 @@ class Account extends Authenticatable
         'password',
         'Account_Type',
         'auth_code',
+        'department_id',
+        'job_role_id',
     ];
 
     protected $hidden = [
         'password',
     ];
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function jobRole()
+    {
+        return $this->belongsTo(JobRole::class);
+    }
+
+    public function employee()
+    {
+        return $this->hasOne(Employee::class, 'account_id', 'Login_ID');
+    }
 }

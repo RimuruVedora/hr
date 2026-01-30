@@ -13,6 +13,161 @@ use Illuminate\Support\Facades\Storage;
 
 class LearningAssessmentController extends Controller
 {
+    public function employeeAssessments()
+    {
+        $user = auth()->user();
+        
+        // Ensure user has an employee record
+        if (!$user->employee) {
+            // Handle case where admin logs in or no employee record
+            return view('learning.Employee-Assessment', ['courses' => []]);
+        }
+
+        $employee = $user->employee;
+        $departmentId = $user->department_id; // Account has department_id
+
+        // 0. Enrolled Courses (Priority)
+        // Fetch trainings the user is participating in
+        $enrolledTrainings = \App\Models\TrainingParticipant::where('employee_id', $employee->id)
+            ->with(['training.course.competencies', 'training.assessment'])
+            ->get()
+            ->map(function ($participant) {
+                $training = $participant->training;
+                $course = $training->course;
+                // Attach training info to course for formatting later
+                $course->setAttribute('user_enrollment', $participant); 
+                $course->setAttribute('user_training', $training);
+                return $course;
+            });
+
+        // Helper to exclude courses with published trainings (for recommendations)
+        // We don't want to recommend "Published" courses unless user is already enrolled (handled above)
+        $excludePublished = function ($q) {
+            $q->whereDoesntHave('trainings', function ($query) {
+                $query->where('status', 'published');
+            });
+        };
+
+        // 1. Department Courses
+        $deptCourses = Course::where('department_id', $departmentId)
+            ->where($excludePublished)
+            ->with(['competencies', 'assessments'])
+            ->get();
+
+        // 2. Competency Gap Courses
+        // Find competencies where current_proficiency < target_proficiency
+        $gapCompetencyIds = DB::table('employee_competencies')
+            ->where('employee_id', $employee->id)
+            ->whereRaw('current_proficiency < target_proficiency')
+            ->pluck('competency_id');
+
+        $gapCourses = Course::whereHas('competencies', function ($q) use ($gapCompetencyIds) {
+            $q->whereIn('competencies.id', $gapCompetencyIds);
+        })
+        ->where($excludePublished)
+        ->with(['competencies', 'assessments'])
+        ->get();
+
+        // 3. Succession Planning Courses
+        $successionCourses = collect();
+        $successionPlan = \App\Models\SuccessionPlan::where('employee_id', $employee->id)
+            ->where('status', '!=', 'Completed') // Assuming Active or Pending
+            ->first();
+
+        if ($successionPlan && $successionPlan->targetRole) {
+            // Get competencies for the target role
+            $targetCompetencyIds = DB::table('job_role_competency')
+                ->where('job_role_id', $successionPlan->target_role_id)
+                ->pluck('competency_id');
+            
+            $successionCourses = Course::whereHas('competencies', function ($q) use ($targetCompetencyIds) {
+                $q->whereIn('competencies.id', $targetCompetencyIds);
+            })
+            ->where($excludePublished)
+            ->with(['competencies', 'assessments'])
+            ->get();
+        }
+
+        // Merge and Unique (Enrolled first to keep their data)
+        $allCourses = $enrolledTrainings
+            ->merge($deptCourses)
+            ->merge($gapCourses)
+            ->merge($successionCourses)
+            ->unique('id');
+
+        // Format for Frontend
+        $formattedCourses = $allCourses->map(function ($course) {
+            $isEnrolled = $course->getAttribute('user_enrollment') !== null;
+            $training = $course->getAttribute('user_training');
+            
+            // Check for available pre-training if not enrolled
+            $availableTraining = null;
+            $isFull = false;
+
+            if (!$isEnrolled) {
+                // Find training that is pre-training (registration open)
+                // We use startOfDay() to ensure trainings starting "today" are included regardless of current time
+                $availableTraining = \App\Models\Training::where('course_id', $course->id)
+                    ->where('status', 'pre_training')
+                    ->where('start_date', '>=', now()->startOfDay()) 
+                    ->withCount('participants')
+                    ->first();
+                
+                if ($availableTraining) {
+                    $isFull = $availableTraining->participants_count >= $availableTraining->capacity;
+                }
+            }
+
+            $examAccess = false;
+            if ($isEnrolled && $training) {
+                $now = now();
+                if ($training->status === 'published' && $now->between($training->start_date, $training->end_date)) {
+                    $examAccess = true;
+                }
+            }
+
+            // Resolve Assessment Data
+            $assessment = null;
+            if ($training && $training->assessment) {
+                $assessment = $training->assessment;
+            } elseif ($course->assessments && $course->assessments->isNotEmpty()) {
+                $assessment = $course->assessments->first();
+            }
+
+            $examData = [
+                'title' => $assessment ? $assessment->title : 'Final Exam',
+                'items' => $assessment ? $assessment->questions()->count() : 0,
+                'type' => $assessment ? $assessment->type : 'Online',
+                'duration' => $assessment ? ($assessment->time_limit . ' Mins') : '60 Mins',
+            ];
+
+            return [
+                'id' => $course->id,
+                'title' => $course->title,
+                'category' => $course->category ?? 'General',
+                'description' => $course->description,
+                'date' => $course->created_at->format('M d, Y'),
+                'duration' => $course->duration,
+                'skills' => $course->competencies->pluck('name')->toArray(),
+                'enrolled' => $isEnrolled,
+                'training_id' => $training ? $training->id : null,
+                'training_status' => $training ? $training->status : null,
+                'start_date' => $training ? $training->start_date->format('M d, Y H:i') : null,
+                'end_date' => $training ? $training->end_date->format('M d, Y H:i') : null,
+                'exam_access' => $examAccess,
+                'has_schedule' => !!$availableTraining, // True if there is a schedule available to enroll
+                'is_full' => $isFull,
+                'available_training_id' => $availableTraining ? $availableTraining->id : null,
+                'materials' => [
+                    ['title' => 'Course PDF', 'link' => $course->material_pdf ? asset('storage/' . $course->material_pdf) : '#'],
+                ],
+                'exam' => $examData
+            ];
+        })->values(); // Reset keys for JSON array
+
+        return view('learning.Employee-Assessment', ['courses' => $formattedCourses]);
+    }
+
     public function index()
     {
         $assessments = Assessment::with(['course', 'competencies', 'questions'])->get();
