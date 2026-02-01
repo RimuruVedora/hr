@@ -436,7 +436,7 @@ function renderCourses() {
 
     grid.innerHTML = filtered.map(course => `
         <div class="bg-white rounded-2xl overflow-hidden card-shadow border border-gray-100 flex flex-col h-full transition-transform hover:scale-[1.01]">
-            ${course.picture ? `<div class="h-48 w-full overflow-hidden"><img src="${appUrl}/storage/${course.picture}" alt="${course.title}" class="w-full h-full object-cover"></div>` : ''}
+            ${course.picture ? `<div class="h-48 w-full overflow-hidden"><img src="${appUrl}/storage/${course.picture}" onerror="this.onerror=null;this.src='${appUrl}/assets/images/logo.png';" alt="${course.title}" class="w-full h-full object-cover"></div>` : ''}
             <div class="p-6 flex-grow">
                 <span class="inline-block bg-blue-600 text-white text-[10px] px-2 py-1 rounded-md font-bold mb-3 uppercase tracking-wider">${course.category}</span>
                 <h3 class="text-xl font-semibold text-gray-800 mb-2">${course.title}</h3>

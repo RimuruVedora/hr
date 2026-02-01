@@ -10,9 +10,33 @@ use App\Models\Assessment;
 use App\Models\EmployeeCompetency;
 use App\Models\TrainingParticipant;
 use App\Models\EmployeeAssessment;
+use App\Models\SuccessionPlan;
 
 class SuccessionPlanController extends Controller
 {
+    public function store(Request $request)
+    {
+        $request->validate([
+            'employee_ids' => 'required|array',
+            'employee_ids.*' => 'exists:employees,id',
+            'target_role_id' => 'required|exists:job_roles,id',
+            'department_id' => 'required|exists:departments,id',
+            'readiness' => 'required|string',
+        ]);
+
+        foreach ($request->employee_ids as $employeeId) {
+            SuccessionPlan::create([
+                'employee_id' => $employeeId,
+                'target_role_id' => $request->target_role_id,
+                'department_id' => $request->department_id,
+                'readiness' => $request->readiness,
+                'status' => 'Pending', // Default status
+            ]);
+        }
+
+        return redirect()->route('succession.plans')->with('success', 'Succession plan created successfully.');
+    }
+
     public function talentAssessment()
     {
         // 1. Fetch Top Skilled Employees (Sum of current_proficiency)

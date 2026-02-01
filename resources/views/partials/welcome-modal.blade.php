@@ -60,7 +60,7 @@
 
                 <!-- Actions -->
                 <div class="grid grid-cols-2 gap-4">
-                    <a href="#" class="group relative flex items-center justify-center py-4 px-6 rounded-2xl bg-white text-slate-700 font-bold border-2 border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all duration-300">
+                    <a href="{{ route('profile') }}" class="group relative flex items-center justify-center py-4 px-6 rounded-2xl bg-white text-slate-700 font-bold border-2 border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all duration-300">
                         <span class="mr-2 group-hover:-translate-x-1 transition-transform duration-300">👤</span>
                         View Profile
                     </a>

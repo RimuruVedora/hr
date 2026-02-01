@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        const response = await fetch('/hr/public/competency/analytics-data');
+        const url = (window.COMPETENCY_API && window.COMPETENCY_API.analytics) ? window.COMPETENCY_API.analytics : '/competency/analytics-data';
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch data');
         const rawData = await response.json();
         
@@ -222,7 +223,10 @@ async function triggerAIPlan() {
     container.innerHTML = '<div class="flex items-center gap-2 text-indigo-600"><i class="fa-solid fa-circle-notch fa-spin"></i> Generating personalized plan...</div>';
     
     try {
-        const response = await fetch(`/hr/public/competency/ai-plan/${currentEmployeeId}`);
+        const baseUrl = (window.COMPETENCY_API && window.COMPETENCY_API.plan) ? window.COMPETENCY_API.plan : '/competency/ai-plan/:id';
+        const url = baseUrl.replace(':id', currentEmployeeId);
+        
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to generate plan');
         const plan = await response.json();
         
@@ -295,7 +299,10 @@ async function sendChatMessage() {
         const tokenMeta = document.querySelector('meta[name="csrf-token"]');
         const token = tokenMeta ? tokenMeta.getAttribute('content') : '';
 
-        const response = await fetch(`/hr/public/competency/ai-chat/${currentEmployeeId}`, {
+        const baseUrl = (window.COMPETENCY_API && window.COMPETENCY_API.chat) ? window.COMPETENCY_API.chat : '/competency/ai-chat/:id';
+        const url = baseUrl.replace(':id', currentEmployeeId);
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

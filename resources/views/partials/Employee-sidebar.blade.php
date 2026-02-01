@@ -16,6 +16,7 @@
           <a class="nav-link {{ request()->routeIs('employee.dashboard') ? 'active' : '' }}" href="{{ route('employee.dashboard') }}"><ion-icon name="home-outline"></ion-icon>Dashboard</a>
           
           <!-- Employee Sections -->
+          <a class="nav-link {{ request()->routeIs('ess.request') ? 'active' : '' }}" href="{{ route('ess.request') }}"><ion-icon name="sync-outline"></ion-icon>Document Request</a>
           <div class="dropdown">
             <button type="button" class="nav-link dropdown-toggle {{ request()->routeIs('learning.*') ? 'active' : '' }}" aria-expanded="false"><ion-icon name="school-outline"></ion-icon>My Learning</button>
             <div class="dropdown-menu">
@@ -30,14 +31,16 @@
               <a class="dropdown-item {{ request()->routeIs('training.schedule') ? 'active' : '' }}" href="{{ route('training.schedule') }}"><ion-icon name="layers-outline"></ion-icon>My Trainings</a>
             </div> 
           </div>
+
                   </nav>
       </div>
+    </div>
 
     <!-- Logout -->
     <div class="p-3 border-top mb-2">
-                <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Profile</a>
-                          <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Settings</a>
-                          <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Sync</a>
+                <a class="nav-link {{ request()->routeIs('profile') ? 'active' : '' }}" href="{{ route('profile') }}"><ion-icon name="person-outline"></ion-icon>Profile</a>
+                          <a class="nav-link" href="#"><ion-icon name="settings-outline"></ion-icon>Settings</a>
+                          <a class="nav-link" href="#"><ion-icon name="sync-outline"></ion-icon>Sync</a>
       <form method="POST" action="{{ route('logout') }}" class="d-inline">
         @csrf
         <button type="submit" class="nav-link text-danger" style="background: none; border: none; width: 100%; text-align: left;">

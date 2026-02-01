@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Account;
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -171,6 +172,15 @@ class AuthController extends Controller
 
         Auth::loginUsingId($accountId);
         $account = Auth::user();
+
+        // Log the activity
+        ActivityLog::create([
+            'user_id' => $account->Login_ID,
+            'action' => 'Login',
+            'description' => 'User logged in successfully via OTP verification.',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
         $account->auth_code = null;
         $account->save();

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Training Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite(['resources/css/app.css'])
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
@@ -148,7 +148,7 @@
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden group">
                         <div class="h-40 bg-slate-100 relative overflow-hidden">
                             <template x-if="training.course.picture">
-                                <img :src="storageUrl + '/' + training.course.picture" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                <img :src="storageUrl + '/' + training.course.picture" onerror="this.onerror=null;this.src='{{ asset('assets/images/logo.png') }}';" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                             </template>
                             <template x-if="!training.course.picture">
                                 <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-200">
@@ -181,7 +181,7 @@
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden group">
                         <div class="h-40 bg-slate-100 relative overflow-hidden">
                              <template x-if="training.course.picture">
-                                <img :src="storageUrl + '/' + training.course.picture" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                <img :src="storageUrl + '/' + training.course.picture" onerror="this.onerror=null;this.src='{{ asset('assets/images/logo.png') }}';" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                             </template>
                             <template x-if="!training.course.picture">
                                 <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-200">
@@ -373,7 +373,7 @@
                 <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" @click.away="viewModalOpen = false">
                     <div class="h-32 bg-slate-100 relative">
                         <template x-if="selectedTraining && selectedTraining.course && selectedTraining.course.picture">
-                            <img :src="storageUrl + '/' + selectedTraining.course.picture" class="w-full h-full object-cover">
+                            <img :src="storageUrl + '/' + selectedTraining.course.picture" onerror="this.onerror=null;this.src='{{ asset('assets/images/logo.png') }}';" class="w-full h-full object-cover">
                         </template>
                         <button @click="viewModalOpen = false" class="absolute top-4 right-4 bg-white/90 text-slate-800 p-2 rounded-full shadow-sm hover:bg-white"><i class='bx bx-x text-lg'></i></button>
                     </div>

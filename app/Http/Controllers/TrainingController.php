@@ -27,7 +27,13 @@ class TrainingController extends Controller
             $employee = $user->employee;
             
             if (!$employee) {
-                 return redirect()->route('home')->with('error', 'Employee record not found.');
+                 // Fallback for users without linked employee record
+                 return view('training.Employee-Training', [
+                    'myTrainings' => collect([]),
+                    'activeCount' => 0,
+                    'attendedCount' => 0,
+                    'enrolledCoursesCount' => 0
+                ])->with('error', 'Employee record not found. Please contact your administrator.');
             }
     
             // Fetch all trainings for this employee

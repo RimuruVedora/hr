@@ -4,22 +4,27 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class Account extends Authenticatable
 {
-    use Notifiable;
+    use Notifiable, HasApiTokens;
 
     protected $table = 'accounts';
     protected $primaryKey = 'Login_ID';
     public $timestamps = false;
 
     protected $fillable = [
-        'email',
-        'password',
+        'User_ID',
+        'Name',
+        'Email',
+        'Password',
         'Account_Type',
         'auth_code',
         'department_id',
         'job_role_id',
+        'path_img',
+        'position', // Added position
     ];
 
     protected $hidden = [

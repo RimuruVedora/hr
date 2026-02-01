@@ -6,7 +6,6 @@
     <title>Succession Planning</title>
     <!-- Tailwind CSS -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -217,13 +216,13 @@
                             </button>
                         </div>
                         
-                        <form action="#" method="POST" class="space-y-4">
+                        <form action="{{ route('succession.plans.store') }}" method="POST" class="space-y-4">
                             @csrf
                             
                             <!-- Department -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                                <select class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2">
+                                <select name="department_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2">
                                     <option value="">Select Department</option>
                                     @foreach($departments as $dept)
                                         <option value="{{ $dept->id }}">{{ $dept->name }}</option>
@@ -247,6 +246,11 @@
                                 }
                             }">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Succession Employee</label>
+                                <!-- Hidden Inputs for Form Submission -->
+                                <template x-for="id in selected" :key="id">
+                                    <input type="hidden" name="employee_ids[]" :value="id">
+                                </template>
+                                
                                 <div class="relative">
                                     <input 
                                         type="text" 
@@ -295,13 +299,31 @@
                             <!-- Succession Position -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Succession Position</label>
-                                <select class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2">
+                                <select name="target_role_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2">
                                     <option value="">Select Position</option>
                                     @foreach($jobRoles as $role)
                                         <option value="{{ $role->id }}">{{ $role->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
+
+                            <!-- Readiness Level -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Readiness Level</label>
+                                <select name="readiness" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2">
+                                    <option value="Ready Now">Ready Now</option>
+                                    <option value="Ready in 1-2 Years">Ready in 1-2 Years</option>
+                                    <option value="Ready in 3-5 Years">Ready in 3-5 Years</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Notes (Optional, if supported by backend) -->
+                            <!-- 
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                <textarea name="notes" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2" rows="3"></textarea>
+                            </div>
+                            -->
 
                             <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
                                 <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm">

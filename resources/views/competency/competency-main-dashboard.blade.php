@@ -5,7 +5,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Competency Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Removed Tailwind CDN to avoid conflicts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
@@ -20,7 +20,7 @@
             jobRolesUpdateBase: "{{ url('/job-roles') }}"
         };
     </script>
-    @vite(['resources/css/competency/competency_main_dashboard.css','resources/js/competency/competency_main_dashboard.js'])
+    @vite(['resources/css/app.css', 'resources/css/competency/competency_main_dashboard.css','resources/js/competency/competency_main_dashboard.js'])
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased custom-scrollbar">
     @include('partials.admin-sidebar')

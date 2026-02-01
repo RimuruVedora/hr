@@ -11,6 +11,27 @@ use App\Http\Controllers\EmployeeDashboardController;
 
 use App\Http\Controllers\SuccessionPlanController;
 
+// Fallback route to serve build assets if symlink is missing
+Route::get('/build/{path}', function ($path) {
+    $path = public_path('build/' . $path);
+    if (file_exists($path)) {
+        $mimeType = \Illuminate\Support\Facades\File::mimeType($path);
+        
+        // Fix for incorrect MIME type detection on some servers
+        if (str_ends_with($path, '.js')) {
+            $mimeType = 'application/javascript';
+        } elseif (str_ends_with($path, '.css')) {
+            $mimeType = 'text/css';
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'public, max-age=31536000',
+        ]);
+    }
+    abort(404);
+})->where('path', '.*');
+
 // Explicit GET handlers to avoid 405 on some Apache/XAMPP setups
 Route::get('/', function () {
     return redirect('/login');
@@ -26,10 +47,36 @@ Route::post('/otp/verify', [AuthController::class, 'verifyOtp'])->name('otp.veri
 Route::post('/otp/resend', [AuthController::class, 'resendOtp'])->name('otp.resend');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Temporary Setup Route (Generate Sync Token)
+Route::get('/setup/generate-token', function () {
+    $admin = App\Models\Account::where('Account_Type', 1)->first();
+    if (!$admin) {
+        return "Error: No Admin account found.";
+    }
+    $token = $admin->createToken('SyncToken')->plainTextToken;
+    return response()->json(['token' => $token]);
+});
+
 Route::middleware(['auth'])->group(function () {
+    // API Tester Route
+    Route::get('/api-tester', function () {
+        return view('api_tester');
+    })->name('api.tester');
+
+    // Profile Routes
+    Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');
+    Route::post('/profile/send-otp', [App\Http\Controllers\ProfileController::class, 'sendPasswordOtp'])->name('profile.send-otp');
+    Route::post('/profile/update-password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.update-password');
+    Route::post('/profile/update-picture', [App\Http\Controllers\ProfileController::class, 'updatePicture'])->name('profile.update-picture');
+
     Route::get('/admin/dashboard', function () {
         return view('dashboard.admin-dashboard');
     })->name('admin.dashboard');
+
+    // Sync Routes
+    Route::get('/admin/sync', [App\Http\Controllers\SyncController::class, 'index'])->name('sync.index');
+    Route::post('/admin/sync/settings', [App\Http\Controllers\SyncController::class, 'updateSettings'])->name('sync.update');
+    Route::post('/admin/sync/now', [App\Http\Controllers\SyncController::class, 'syncNow'])->name('sync.now');
 
     Route::get('/employee/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
 
@@ -81,8 +128,20 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/learning/assessments', [LearningAssessmentController::class, 'store'])->name('learning.assessments.store');
     Route::delete('/learning/assessments/{id}', [LearningAssessmentController::class, 'destroy'])->name('learning.assessments.destroy');
     Route::get('/learning/assessment-scores', [LearningAssessmentController::class, 'scores'])->name('learning.assessment-scores');
+    
+    // Overall Score Routes
+    Route::get('/learning/overall-score', [LearningAssessmentController::class, 'overallScore'])->name('learning.overall-score');
+    Route::get('/learning/courses/{id}/trainings', [LearningAssessmentController::class, 'getCourseTrainings'])->name('learning.course.trainings');
+    Route::get('/learning/trainings/{id}/scores', [LearningAssessmentController::class, 'getTrainingScores'])->name('learning.training.scores');
 
     // Succession Planning Routes
     Route::get('/succession-plans', [SuccessionPlanController::class, 'index'])->name('succession.plans');
+    Route::post('/succession-plans', [SuccessionPlanController::class, 'store'])->name('succession.plans.store');
     Route::get('/talent-assessment', [SuccessionPlanController::class, 'talentAssessment'])->name('talent.assessment');
+
+    // Employee Self-Service (ESS) Routes
+    Route::get('/ess/request', [App\Http\Controllers\EssRequestController::class, 'index'])->name('ess.request');
+    Route::post('/ess/request', [App\Http\Controllers\EssRequestController::class, 'store'])->name('ess.request.store');
+    Route::put('/ess/request/{id}', [App\Http\Controllers\EssRequestController::class, 'update'])->name('ess.request.update');
+    Route::get('/ess/request/{id}/download', [App\Http\Controllers\EssRequestController::class, 'downloadResponse'])->name('ess.request.download');
 });

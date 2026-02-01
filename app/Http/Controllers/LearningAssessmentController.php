@@ -11,8 +11,87 @@ use App\Models\AssessmentOption;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
+use App\Models\Training;
+use App\Models\TrainingParticipant;
+use App\Models\EmployeeAssessment;
+
 class LearningAssessmentController extends Controller
 {
+    public function overallScore()
+    {
+        // Dashboard Stats
+        $totalCourses = Course::count();
+        $totalTrainings = Training::count();
+        $avgOnlineScore = EmployeeAssessment::whereNotNull('score')->avg('score') ?? 0;
+        $avgPhysicalScore = TrainingParticipant::whereNotNull('grade')->avg('grade') ?? 0;
+
+        // Fetch all courses with training count
+        $courses = Course::withCount('trainings')->get();
+
+        return view('learning.admin-overall-score', compact(
+            'courses', 
+            'totalCourses', 
+            'totalTrainings', 
+            'avgOnlineScore', 
+            'avgPhysicalScore'
+        ));
+    }
+
+    public function getCourseTrainings($courseId)
+    {
+        $trainings = Training::where('course_id', $courseId)
+            ->with(['participants'])
+            ->get()
+            ->map(function ($training) {
+                return [
+                    'id' => $training->id,
+                    'title' => $training->title ?? 'Training Session', // Training might not have title, usually inherits from Course or has its own? 
+                    // Wait, Training model usually has start_date, location, etc.
+                    'start_date' => $training->start_date,
+                    'end_date' => $training->end_date,
+                    'location' => $training->location,
+                    'status' => $training->status,
+                    'participants_count' => $training->participants->count(),
+                ];
+            });
+
+        return response()->json($trainings);
+    }
+
+    public function getTrainingScores($trainingId)
+    {
+        $participants = TrainingParticipant::where('training_id', $trainingId)
+            ->with(['employee.jobRole'])
+            ->get();
+
+        $training = Training::find($trainingId);
+        
+        $scores = $participants->map(function ($participant) use ($trainingId) {
+            $employee = $participant->employee;
+            
+            // Online Score
+            $onlineAssessment = EmployeeAssessment::where('training_id', $trainingId)
+                ->where('employee_id', $employee->id)
+                ->first();
+
+            return [
+                'employee_id' => $employee->id,
+                'name' => $employee->first_name . ' ' . $employee->last_name,
+                'department' => $employee->department ?? 'N/A',
+                'job_role' => $employee->jobRole->name ?? 'N/A',
+                'physical_score' => $participant->grade ?? 'N/A',
+                'online_score' => $onlineAssessment ? $onlineAssessment->score . '/' . $onlineAssessment->total_items : 'N/A',
+                'status' => $participant->status, // Completed, Ongoing, etc.
+                'avatar' => $employee->profile_picture ?? null,
+            ];
+        });
+
+        return response()->json([
+            'training_title' => $training->title ?? 'Training Details', // Check Training model for title
+            'scores' => $scores
+        ]);
+    }
+
     public function employeeAssessments()
     {
         $user = auth()->user();
@@ -301,36 +380,9 @@ class LearningAssessmentController extends Controller
 
     public function scores()
     {
-        $assessments = Assessment::with(['course', 'competencies', 'questions'])->get();
+        // Fetch all courses with training count
+        $courses = Course::withCount('trainings')->get();
 
-        $scoresData = $assessments->map(function ($assessment) {
-            $totalPoints = $assessment->questions->sum('points');
-            
-            // Mock Data for statistics since result tables don't exist yet
-            $participants = rand(10, 100);
-            $passingRate = rand(60, 100);
-            
-            $scope = 'Internal';
-            $proficiency = 'Beginner';
-            if ($assessment->competencies->isNotEmpty()) {
-                $scope = $assessment->competencies->first()->scope ?? 'Internal';
-                $proficiency = $assessment->competencies->first()->proficiency ?? 'Beginner';
-            }
-
-            return [
-                'id' => $assessment->id,
-                'title' => $assessment->title,
-                'course_title' => $assessment->course ? $assessment->course->title : 'N/A',
-                'course_picture' => $assessment->course ? $assessment->course->picture : null,
-                'total_scores' => $totalPoints,
-                'participants' => $participants,
-                'passing_rate' => $passingRate,
-                'proficiency' => $proficiency,
-                'scope' => $scope,
-                'skills' => $assessment->competencies->pluck('name')->toArray(),
-            ];
-        });
-
-        return view('learning.admin-assessment-score', compact('scoresData'));
+        return view('learning.admin-assessment-score', compact('courses'));
     }
 }

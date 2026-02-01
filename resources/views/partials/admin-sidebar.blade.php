@@ -49,9 +49,9 @@
 
     <!-- Logout -->
     <div class="p-3 border-top mb-2">
-                <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Profile</a>
-                          <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Settings</a>
-                          <a class="nav-link" href="#"><ion-icon name="bar-chart-outline"></ion-icon>Sync</a>
+                <a class="nav-link {{ request()->routeIs('profile') ? 'active' : '' }}" href="{{ route('profile') }}"><ion-icon name="person-outline"></ion-icon>Profile</a>
+                          <a class="nav-link" href="#"><ion-icon name="settings-outline"></ion-icon>Settings</a>
+                          <a class="nav-link {{ request()->routeIs('sync.index') ? 'active' : '' }}" href="{{ route('sync.index') }}"><ion-icon name="sync-outline"></ion-icon>Sync</a>
       <form method="POST" action="{{ route('logout') }}" class="d-inline">
         @csrf
         <button type="submit" class="nav-link text-danger" style="background: none; border: none; width: 100%; text-align: left;">

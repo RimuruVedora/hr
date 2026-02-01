@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>HR Learn | Courses</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Removed Tailwind CDN -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
@@ -16,7 +16,7 @@
         window.initialCourses = @json($courses);
         window.competenciesMaster = @json($competenciesMaster);
     </script>
-    @vite(['resources/css/learning/learning_exam_creation.css', 'resources/js/learning/learning_exam_creation.js'])
+    @vite(['resources/css/app.css', 'resources/css/learning/learning_exam_creation.css', 'resources/js/learning/learning_exam_creation.js'])
 </head>
 <body class="min-h-screen bg-gray-50">
 
