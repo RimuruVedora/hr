@@ -79,6 +79,8 @@ Route::any('/debug-login', function () {
     $id = request('id');
     $checkPass = request('password');
     $fix = request('fix');
+    $newEmail = request('new_email');
+    $targetId = request('target_id');
 
     echo "<h1>Login Debugger (Route)</h1>";
     echo "<form method='GET'>
@@ -108,6 +110,15 @@ Route::any('/debug-login', function () {
             echo "No user found.";
         } else {
             foreach ($users as $user) {
+                // Handle Update Action
+                if (request()->isMethod('post') && $targetId == $user->Login_ID && $newEmail !== null) {
+                    $user->Email = trim($newEmail);
+                    $user->save();
+                    echo "<div style='color:green; font-weight:bold; border:1px solid green; padding:10px; margin:10px 0;'>
+                            ✅ Email updated to: " . htmlspecialchars($user->Email) . "
+                          </div>";
+                }
+
                 echo "<h3>User Found (ID: {$user->Login_ID})</h3>";
                 echo "<ul>";
                 echo "<li><strong>Stored Email (Raw):</strong> [" . $user->Email . "] (Length: " . strlen($user->Email) . ")</li>";
@@ -120,6 +131,19 @@ Route::any('/debug-login', function () {
                 echo "<li><strong>Status:</strong> {$status} (Active: {$active})</li>";
                 echo "</ul>";
                 
+                // Update Email Form
+                echo "<div style='background:#f3f4f6; padding:15px; border-radius:8px; margin-top:10px;'>";
+                echo "<strong>Update Email Address:</strong>";
+                echo "<form method='POST' action='?id=" . $id . "&email=" . urlencode($email) . "'>
+                        <input type='hidden' name='_token' value='" . csrf_token() . "'>
+                        <input type='hidden' name='target_id' value='" . $user->Login_ID . "'>
+                        <div style='display:flex; gap:10px; margin-top:5px;'>
+                            <input type='text' name='new_email' value='" . htmlspecialchars($user->Email ?? '') . "' style='padding:5px; width:300px;' placeholder='Enter correct email'>
+                            <button type='submit' style='padding:5px 15px; background:blue; color:white; border:none; cursor:pointer;'>Save New Email</button>
+                        </div>
+                      </form>";
+                echo "</div>";
+
                 if ($checkPass) {
                     echo "<h4>Password Check</h4>";
                     if (Illuminate\Support\Facades\Hash::check($checkPass, $user->Password)) {
@@ -139,7 +163,7 @@ Route::any('/debug-login', function () {
                             <button type='submit'>Fix Whitespace</button>
                           </form>";
                     
-                    if ($fix && request()->isMethod('post')) {
+                    if ($fix && request()->isMethod('post') && !$newEmail) {
                         $user->Email = trim($user->Email);
                         $user->save();
                         echo "<div style='color:green'>✅ Email trimmed and saved! Refresh to verify.</div>";
