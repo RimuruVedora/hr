@@ -3,13 +3,23 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
 
-    $url = 'https://hr2.viahale.com/api/employee/sync'; // Target Live URL
-    // $url = 'http://localhost/hr/public/api/employee/sync'; // Localhost fallback
-
-    $token = 'secret_token_12345'; // Token matching .env
-
     // Get JSON input from the frontend fetch
     $inputData = json_decode(file_get_contents('php://input'), true);
+
+    $target = $inputData['target_env'] ?? 'live';
+    
+    if ($target === 'local') {
+        $url = 'http://localhost/hr/public/api/employee/sync';
+    } else {
+        $url = 'https://hr2.viahale.com/api/employee/sync';
+    }
+
+    // Remove target_env from payload before forwarding
+    if (isset($inputData['target_env'])) {
+        unset($inputData['target_env']);
+    }
+
+    $token = 'secret_token_12345'; // Token matching .env
 
     // Initialize cURL
     $ch = curl_init($url);
@@ -56,11 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-700">
             <p class="font-bold">Mode:</p>
-            <p>This UI sends data to this server (Localhost), which then proxies it to:</p>
-            <code class="block mt-1 bg-blue-100 p-2 rounded">https://hr2.viahale.com/api/employee/sync</code>
+            <p>This UI proxies requests to the selected server.</p>
         </div>
 
         <form id="apiForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Target Environment</label>
+                <select name="target_env" id="target_env" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 p-2 border">
+                    <option value="live">Live (hr2.viahale.com)</option>
+                    <option value="local">Localhost (localhost/hr/public)</option>
+                </select>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Employee ID</label>
