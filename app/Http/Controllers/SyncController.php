@@ -126,8 +126,8 @@ class SyncController extends Controller
             // 3. Resolve Job Role & Department
             $roleId = null;
             if (!empty($validated['job_role'])) {
-                $jobRole = JobRole::firstOrCreate(['job_role' => $validated['job_role']]);
-                $roleId = $jobRole->job_role_id;
+                $jobRole = JobRole::firstOrCreate(['name' => $validated['job_role']]);
+                $roleId = $jobRole->id;
             }
 
             if (!empty($validated['department'])) {
@@ -201,32 +201,36 @@ class SyncController extends Controller
 
     public function listEmployees(Request $request)
     {
-        // 1. Verify Token (Optional: but recommended for data privacy)
-        $expectedToken = env('EMPLOYEE_SYNC_TOKEN', 'secret_token_12345');
-        // Allow check via Bearer token or 'token' query param for browser ease
-        $token = $request->bearerToken() ?? $request->query('token');
+        try {
+            // 1. Verify Token (Optional: but recommended for data privacy)
+            $expectedToken = env('EMPLOYEE_SYNC_TOKEN', 'secret_token_12345');
+            // Allow check via Bearer token or 'token' query param for browser ease
+            $token = $request->bearerToken() ?? $request->query('token');
 
-        if ($token !== $expectedToken) {
+            if ($token !== $expectedToken) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Unauthorized. Please provide valid token via Bearer Auth or ?token= param.'
+                ], 401);
+            }
+
+            // 2. Fetch Data
+            // Get all employees with their related account info
+            $employees = Employee::with('account')->get();
+            
+            // Also get accounts that might not have an employee record yet (orphaned accounts)
+            $accounts = Account::whereDoesntHave('employee')->get();
+
             return response()->json([
-                'success' => false, 
-                'message' => 'Unauthorized. Please provide valid token via Bearer Auth or ?token= param.'
-            ], 401);
+                'success' => true,
+                'count_employees' => $employees->count(),
+                'count_orphaned_accounts' => $accounts->count(),
+                'employees' => $employees,
+                'orphaned_accounts' => $accounts
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'List Error: ' . $e->getMessage()], 500);
         }
-
-        // 2. Fetch Data
-        // Get all employees with their related account info
-        $employees = Employee::with('account')->get();
-        
-        // Also get accounts that might not have an employee record yet (orphaned accounts)
-        $accounts = Account::whereDoesntHave('employee')->get();
-
-        return response()->json([
-            'success' => true,
-            'count_employees' => $employees->count(),
-            'count_orphaned_accounts' => $accounts->count(),
-            'employees' => $employees,
-            'orphaned_accounts' => $accounts
-        ]);
     }
 
     public function receiveData(Request $request)
