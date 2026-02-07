@@ -172,12 +172,38 @@ class SyncController extends Controller
 
             $account->save();
 
+            // 5. Update or Create Employee Record
+            $employee = Employee::where('employee_id', $validated['employee_id'])
+                                ->orWhere('account_id', $account->Login_ID)
+                                ->first();
+
+            if (!$employee) {
+                $employee = new Employee();
+                $employee->employee_id = $validated['employee_id'];
+                $employee->account_id = $account->Login_ID;
+            }
+
+            $employee->first_name = $validated['first_name'];
+            $employee->last_name = $validated['last_name'];
+            $employee->email = $validated['email'];
+            $employee->department = $validated['department'] ?? null; // Employee model stores department name string based on fillable
+            $employee->job_role_id = $roleId;
+            $employee->status = 'Active'; // Default status
+            
+            // Handle date_hired if provided in future updates, or default
+            // $employee->date_hired = now(); 
+
+            $employee->save();
+
             DB::commit();
 
             return response()->json([
                 'success' => true, 
-                'message' => 'Employee synced successfully.',
-                'data' => $account
+                'message' => 'Employee and Account synced successfully.',
+                'data' => [
+                    'account' => $account,
+                    'employee' => $employee
+                ]
             ]);
 
         } catch (\Exception $e) {
