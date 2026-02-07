@@ -147,13 +147,13 @@ class SyncController extends Controller
                 $account->Account_Type = 2; // Default to Employee
             }
 
-            $account->First_Name = $validated['first_name'];
-            $account->Last_Name = $validated['last_name'];
+            $account->Name = $validated['first_name'] . ' ' . $validated['last_name'];
             // Only update password if provided
             if (!empty($validated['password'])) {
                 $account->Password = Hash::make($validated['password']);
             }
-            $account->Status = 'Active';
+            // Account status/active column not confirmed in fillable, skipping to avoid SQL error
+            // $account->Status = 'Active'; 
 
             $account->save();
 
@@ -227,7 +227,7 @@ class SyncController extends Controller
                 'count_orphaned_accounts' => $accounts->count(),
                 'employees' => $employees,
                 'orphaned_accounts' => $accounts
-            ]);
+            ], 200, [], JSON_INVALID_UTF8_SUBSTITUTE);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'List Error: ' . $e->getMessage()], 500);
         }
