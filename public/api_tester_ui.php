@@ -14,18 +14,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $url = 'https://hr2.viahale.com/api/employee/sync';
     }
 
-    // Remove target_env from payload before forwarding
-    if (isset($inputData['target_env'])) {
-        unset($inputData['target_env']);
-    }
+    $method = $inputData['method'] ?? 'POST';
+
+    // Remove target_env and method from payload before forwarding
+    if (isset($inputData['target_env'])) unset($inputData['target_env']);
+    if (isset($inputData['method'])) unset($inputData['method']);
 
     $token = 'secret_token_12345'; // Token matching .env
 
     // Initialize cURL
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($inputData));
+    
+    if ($method === 'POST') {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($inputData));
+    } else {
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
+        // For GET, we might want to append params to URL if needed, 
+        // but for this specific "friendly message" endpoint, we don't need params.
+    }
+
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'Accept: application/json',
@@ -70,13 +79,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <form id="apiForm" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Target Environment</label>
-                <select name="target_env" id="target_env" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 p-2 border">
-                    <option value="live">Live (hr2.viahale.com)</option>
-                    <option value="local">Localhost (localhost/hr/public)</option>
-                </select>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Target Environment</label>
+                    <select name="target_env" id="target_env" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 p-2 border">
+                        <option value="live">Live (hr2.viahale.com)</option>
+                        <option value="local">Localhost (localhost/hr/public)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">HTTP Method</label>
+                    <select name="method" id="method" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 p-2 border">
+                        <option value="POST">POST (Sync Data)</option>
+                        <option value="GET">GET (Check Status)</option>
+                    </select>
+                </div>
             </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Employee ID</label>
@@ -153,8 +172,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             resultArea.classList.add('hidden');
 
             // Gather form data
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
+            const data = {
+                target_env: document.getElementById('target_env').value,
+                method: document.getElementById('method').value,
+                employee_id: document.getElementById('employee_id').value,
+                email: document.getElementById('email').value,
+                first_name: document.getElementById('first_name').value,
+                last_name: document.getElementById('last_name').value,
+                job_role: document.getElementById('job_role').value,
+                department: document.getElementById('department').value,
+                password: document.getElementById('password').value
+            };
 
             try {
                 // Send to SAME FILE (acts as proxy)

@@ -29,9 +29,9 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/employee/sync', [SyncController::class, 'syncEmployee']);
 Route::get('/employee/sync', function () {
     return response()->json([
-        'status' => 'error',
-        'message' => 'Method Not Allowed. This endpoint only accepts POST requests for synchronization.'
-    ], 405);
+        'status' => 'success',
+        'message' => 'Sync API is active. Please use POST method to sync employee data.'
+    ], 200);
 });
 
 // ESS Request API (Custom Token Auth)
