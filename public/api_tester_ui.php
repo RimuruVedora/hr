@@ -7,18 +7,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inputData = json_decode(file_get_contents('php://input'), true);
 
     $target = $inputData['target_env'] ?? 'live';
+    $operation = $inputData['operation'] ?? 'POST_SYNC';
     
-    if ($target === 'local') {
-        $url = 'http://localhost/hr/public/api/employee/sync';
-    } else {
-        $url = 'https://hr2.viahale.com/api/employee/sync';
+    $baseUrl = ($target === 'local') 
+        ? 'http://localhost/hr/public' 
+        : 'https://hr2.viahale.com';
+
+    // Determine Endpoint and Method based on Operation
+    switch ($operation) {
+        case 'GET_LIST':
+            $endpoint = '/api/employees/list';
+            $method = 'GET';
+            break;
+        case 'GET_STATUS':
+            $endpoint = '/api/employee/sync';
+            $method = 'GET';
+            break;
+        case 'POST_SYNC':
+        default:
+            $endpoint = '/api/employee/sync';
+            $method = 'POST';
+            break;
     }
 
-    $method = $inputData['method'] ?? 'POST';
+    $url = $baseUrl . $endpoint;
 
-    // Remove target_env and method from payload before forwarding
+    // Remove metadata from payload before forwarding
     if (isset($inputData['target_env'])) unset($inputData['target_env']);
-    if (isset($inputData['method'])) unset($inputData['method']);
+    if (isset($inputData['operation'])) unset($inputData['operation']);
+    if (isset($inputData['method'])) unset($inputData['method']); // Legacy support
 
     $token = 'secret_token_12345'; // Token matching .env
 
@@ -88,12 +105,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">HTTP Method</label>
-                    <select name="method" id="method" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 p-2 border">
-                        <option value="POST">POST (Sync Data)</option>
-                        <option value="GET">GET (Check Status)</option>
+                    <label class="block text-sm font-medium text-gray-700">Operation (Endpoint & Method)</label>
+                    <select name="operation" id="operation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 p-2 border">
+                        <option value="POST_SYNC">POST: Sync Data (/api/employee/sync)</option>
+                        <option value="GET_STATUS">GET: Check Sync Status (/api/employee/sync)</option>
+                        <option value="GET_LIST">GET: List All Employees (/api/employees/list)</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="mt-2">
+                <label class="block text-sm font-medium text-gray-700">Current Target URL</label>
+                <input type="text" id="current_url" readonly class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-600 shadow-sm p-2 border font-mono text-sm" value="">
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -148,6 +171,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        function updateUrlDisplay() {
+            const target = document.getElementById('target_env').value;
+            const operation = document.getElementById('operation').value;
+            
+            const baseUrl = (target === 'local') 
+                ? 'http://localhost/hr/public' 
+                : 'https://hr2.viahale.com';
+                
+            let endpoint = '/api/employee/sync';
+            if (operation === 'GET_LIST') {
+                endpoint = '/api/employees/list';
+            }
+            
+            document.getElementById('current_url').value = baseUrl + endpoint;
+        }
+
+        // Add event listeners for URL updates
+        document.getElementById('target_env').addEventListener('change', updateUrlDisplay);
+        document.getElementById('operation').addEventListener('change', updateUrlDisplay);
+
         function generateRandomData() {
             const id = Math.floor(Math.random() * 9000) + 1000;
             document.getElementById('employee_id').value = 'EMP-' + id;
@@ -174,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Gather form data
             const data = {
                 target_env: document.getElementById('target_env').value,
-                method: document.getElementById('method').value,
+                operation: document.getElementById('operation').value,
                 employee_id: document.getElementById('employee_id').value,
                 email: document.getElementById('email').value,
                 first_name: document.getElementById('first_name').value,
@@ -219,8 +262,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
         
-        // Initial random data
+        // Initial random data and URL display
         generateRandomData();
+        updateUrlDisplay();
     </script>
 </body>
 </html>
