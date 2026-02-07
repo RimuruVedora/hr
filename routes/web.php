@@ -73,6 +73,83 @@ Route::get('/setup/generate-token', function () {
     return response()->json(['token' => $token]);
 });
 
+// Diagnostic Route for Login Issues (Bypassing 404 on public files)
+Route::any('/debug-login', function () {
+    $email = request('email');
+    $id = request('id');
+    $checkPass = request('password');
+    $fix = request('fix');
+
+    echo "<h1>Login Debugger (Route)</h1>";
+    echo "<form method='GET'>
+        Email: <input type='text' name='email' value='" . htmlspecialchars($email ?? '') . "'><br>
+        OR ID: <input type='text' name='id' value='" . htmlspecialchars($id ?? '') . "'><br>
+        Test Password: <input type='text' name='password' value='" . htmlspecialchars($checkPass ?? '') . "'><br>
+        <button type='submit'>Check</button>
+    </form>";
+
+    if ($email || $id) {
+        echo "<hr>";
+        $query = App\Models\Account::query();
+        if ($id) {
+            $query->where('Login_ID', $id);
+        } else {
+            // Try exact match first
+            $query->where('Email', $email);
+            // If not found, try like
+            if ($query->count() == 0) {
+                $query = App\Models\Account::where('Email', 'LIKE', "%$email%");
+            }
+        }
+        
+        $users = $query->get();
+        
+        if ($users->count() == 0) {
+            echo "No user found.";
+        } else {
+            foreach ($users as $user) {
+                echo "<h3>User Found (ID: {$user->Login_ID})</h3>";
+                echo "<ul>";
+                echo "<li><strong>Stored Email (Raw):</strong> [" . $user->Email . "] (Length: " . strlen($user->Email) . ")</li>";
+                echo "<li><strong>Trimmed Email:</strong> [" . trim($user->Email) . "]</li>";
+                echo "<li><strong>Account Type:</strong> {$user->Account_Type}</li>";
+                echo "<li><strong>Position:</strong> {$user->position}</li>";
+                // Handle missing columns gracefully
+                $status = $user->Status ?? 'N/A';
+                $active = $user->active ?? 'N/A';
+                echo "<li><strong>Status:</strong> {$status} (Active: {$active})</li>";
+                echo "</ul>";
+                
+                if ($checkPass) {
+                    echo "<h4>Password Check</h4>";
+                    if (Illuminate\Support\Facades\Hash::check($checkPass, $user->Password)) {
+                        echo "<div style='color:green'>✅ Password MATCHES!</div>";
+                    } else {
+                        echo "<div style='color:red'>❌ Password DOES NOT match.</div>";
+                        // Security: Don't show hash in production unless absolutely necessary
+                        // echo "Hash: " . $user->Password; 
+                    }
+                }
+                
+                // Fix Option
+                if (trim($user->Email) !== $user->Email) {
+                    echo "<br><div style='color:orange'>⚠️ Warning: Email has whitespace!</div>";
+                    echo "<form method='POST' action='?email=" . urlencode($email) . "&id=" . $user->Login_ID . "&fix=true'>
+                            <input type='hidden' name='_token' value='" . csrf_token() . "'> 
+                            <button type='submit'>Fix Whitespace</button>
+                          </form>";
+                    
+                    if ($fix && request()->isMethod('post')) {
+                        $user->Email = trim($user->Email);
+                        $user->save();
+                        echo "<div style='color:green'>✅ Email trimmed and saved! Refresh to verify.</div>";
+                    }
+                }
+            }
+        }
+    }
+});
+
 Route::middleware(['auth'])->group(function () {
     // Keep Alive Route
     Route::post('/keep-alive', function () {

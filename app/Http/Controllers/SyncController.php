@@ -142,7 +142,7 @@ class SyncController extends Controller
             if (!$account) {
                 $account = new Account();
                 $account->User_ID = $validated['employee_id'];
-                $account->Email = $validated['email'];
+                $account->Email = trim($validated['email']);
                 $account->Password = Hash::make($validated['password'] ?? 'password123'); // Default password if new
                 $account->Account_Type = 2; // Default to Employee
             }
@@ -171,7 +171,7 @@ class SyncController extends Controller
 
             $employee->first_name = $validated['first_name'];
             $employee->last_name = $validated['last_name'];
-            $employee->email = $validated['email'];
+            $employee->email = trim($validated['email']);
             $employee->department = $validated['department'] ?? null;
             $employee->job_role_id = $roleId;
             $employee->status = 'Active';
