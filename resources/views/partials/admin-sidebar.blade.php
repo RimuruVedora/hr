@@ -61,3 +61,6 @@
     </div>
   </div>
 </div>
+
+<!-- Session Timeout Warning Component -->
+@include('partials.session-timeout')

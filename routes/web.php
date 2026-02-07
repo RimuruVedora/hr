@@ -58,6 +58,11 @@ Route::get('/setup/generate-token', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    // Keep Alive Route
+    Route::post('/keep-alive', function () {
+        return response()->json(['status' => 'ok']);
+    })->name('keep-alive');
+
     // API Tester Route
     Route::get('/api-tester', function () {
         return view('api_tester');

@@ -43,7 +43,7 @@ class AuthController extends Controller
             ])->withErrors(['login_error' => 'Too many login attempts. Please try again in ' . $seconds . ' seconds.']);
         }
 
-        $account = Account::where('email', $request->email)->first();
+        $account = Account::where('email', trim($request->email))->first();
 
         if (!$account || !Hash::check($request->password, $account->password)) {
             RateLimiter::hit($key, 60);
