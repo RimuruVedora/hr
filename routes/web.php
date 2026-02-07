@@ -48,6 +48,22 @@ Route::post('/otp/resend', [AuthController::class, 'resendOtp'])->name('otp.rese
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Temporary Setup Route (Generate Sync Token)
+Route::get('/debug-config', function () {
+    $deptFile = base_path('app/Models/Department.php');
+    $deptContent = file_exists($deptFile) ? file_get_contents($deptFile) : 'File not found';
+    
+    $syncFile = base_path('app/Http/Controllers/SyncController.php');
+    $syncContent = file_exists($syncFile) ? file_get_contents($syncFile) : 'File not found';
+
+    return response()->json([
+        'base_path' => base_path(),
+        'department_model_content' => $deptContent,
+        'sync_controller_content_snippet' => substr($syncContent, 0, 500) . '...' . substr($syncContent, -500),
+        'department_has_fillable' => strpos($deptContent, "'name'") !== false,
+        'sync_has_employee_logic' => strpos($syncContent, 'Employee::where') !== false
+    ]);
+});
+
 Route::get('/setup/generate-token', function () {
     $admin = App\Models\Account::where('Account_Type', 1)->first();
     if (!$admin) {
