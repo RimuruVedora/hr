@@ -27,3 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Employee Sync Route (Custom Token Auth)
 Route::post('/employee/sync', [SyncController::class, 'syncEmployee']);
+
+// ESS Request API (Custom Token Auth)
+Route::get('/ess/request', [EssRequestApiController::class, 'getExternalRequests']);
+Route::post('/ess/request', [EssRequestApiController::class, 'storeExternalRequest']);
