@@ -102,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Details (JSON)</label>
                     <textarea id="details" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-gray-50 p-2 border" placeholder='{"reason": "Fever", "dates": ["2023-10-27"]}'></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Leave empty or enter valid JSON (e.g., {"reason": "sick"}).</p>
                 </div>
                 <button type="button" onclick="sendPostRequest()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
                     Send POST Request
@@ -130,10 +131,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             let details = {};
             
             try {
-                const detailsText = document.getElementById('details').value;
-                if (detailsText) details = JSON.parse(detailsText);
+                const detailsText = document.getElementById('details').value.trim();
+                if (detailsText) {
+                    details = JSON.parse(detailsText);
+                }
             } catch (e) {
-                alert('Invalid JSON in details field');
+                alert('Invalid JSON in details field. Please correct it or leave it empty.');
                 return;
             }
 
