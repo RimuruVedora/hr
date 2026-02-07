@@ -148,6 +148,7 @@ class SyncController extends Controller
             }
 
             $account->Name = $validated['first_name'] . ' ' . $validated['last_name'];
+            $account->position = $validated['job_role'] ?? 'Employee'; // Required field fix
             // Only update password if provided
             if (!empty($validated['password'])) {
                 $account->Password = Hash::make($validated['password']);
