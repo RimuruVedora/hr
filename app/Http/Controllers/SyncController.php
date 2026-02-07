@@ -98,77 +98,62 @@ class SyncController extends Controller
     public function syncEmployee(Request $request)
     {
         // 1. Verify Token
-        $token = $request->header('Authorization');
-        // Extract 'Bearer ' if present
-        if (str_starts_with($token, 'Bearer ')) {
-            $token = substr($token, 7);
+        $expectedToken = env('EMPLOYEE_SYNC_TOKEN', 'secret_token_12345');
+        $bearerToken = $request->bearerToken();
+
+        if ($bearerToken !== $expectedToken) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
         }
 
-        $validToken = env('EMPLOYEE_SYNC_TOKEN');
-        if (!$validToken || $token !== $validToken) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        // 2. Validate Input
-        $validated = $request->validate([
-            'employee_id' => 'required|string',
-            'email' => 'required|email',
-            'first_name' => 'required|string',
-            'last_name' => 'required|string',
-            'job_role' => 'nullable|string',
-            'department' => 'nullable|string',
-            'password' => 'nullable|string|min:6',
-        ]);
-
+        // 2. Validate Request
         try {
-            DB::beginTransaction();
+            $validated = $request->validate([
+                'employee_id' => 'required|string',
+                'first_name' => 'required|string',
+                'last_name' => 'required|string',
+                'email' => 'required|email',
+                'department' => 'nullable|string',
+                'job_role' => 'nullable|string',
+                'password' => 'nullable|string', // Optional password update
+                'date_hired' => 'nullable|date',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+             return response()->json(['success' => false, 'message' => 'Validation Error: ' . $e->getMessage(), 'errors' => $e->errors()], 422);
+        }
 
-            // 3. Resolve Relations
-            $deptId = null;
-            if (!empty($validated['department'])) {
-                $dept = Department::firstOrCreate(['name' => $validated['department']]);
-                $deptId = $dept->id;
-            }
-
+        DB::beginTransaction();
+        try {
+            // 3. Resolve Job Role & Department
             $roleId = null;
             if (!empty($validated['job_role'])) {
-                $role = JobRole::firstOrCreate(['name' => $validated['job_role']]);
-                $roleId = $role->id;
+                $jobRole = JobRole::firstOrCreate(['job_role' => $validated['job_role']]);
+                $roleId = $jobRole->job_role_id;
+            }
+
+            if (!empty($validated['department'])) {
+                Department::firstOrCreate(['name' => $validated['department']]);
             }
 
             // 4. Update or Create Account
-            $account = Account::where('email', $validated['email'])
-                              ->orWhere('User_ID', $validated['employee_id'])
+            $account = Account::where('User_ID', $validated['employee_id'])
+                              ->orWhere('Email', $validated['email'])
                               ->first();
 
             if (!$account) {
                 $account = new Account();
                 $account->User_ID = $validated['employee_id'];
-                $account->email = $validated['email']; // lowercase per DB inspection
-                $account->password = Hash::make($validated['password'] ?? 'password123');
+                $account->Email = $validated['email'];
+                $account->Password = Hash::make($validated['password'] ?? 'password123'); // Default password if new
+                $account->Account_Type = 2; // Default to Employee
             }
 
-            // Update fields
-            $account->name = $validated['first_name'] . ' ' . $validated['last_name'];
-            $account->department_id = $deptId;
-            $account->job_role_id = $roleId;
-            $account->position = $validated['job_role'] ?? 'Employee';
-            $account->Account_Type = 2; // Default to Employee
-            $account->active = 'active'; // Default active
-            
-            // Set required defaults if new
-            if (!$account->exists) {
-                $account->theme_mode = 'light';
-                $account->ai_zoho_enabled = 0;
-                $account->ai_gemini_enabled = 0;
-                $account->login_count = 0;
-                $account->ai_zoho_budget_calc_enabled = 0;
-            }
-            
-            // Update password if provided
+            $account->First_Name = $validated['first_name'];
+            $account->Last_Name = $validated['last_name'];
+            // Only update password if provided
             if (!empty($validated['password'])) {
-                $account->password = Hash::make($validated['password']);
+                $account->Password = Hash::make($validated['password']);
             }
+            $account->Status = 'Active';
 
             $account->save();
 
@@ -186,12 +171,13 @@ class SyncController extends Controller
             $employee->first_name = $validated['first_name'];
             $employee->last_name = $validated['last_name'];
             $employee->email = $validated['email'];
-            $employee->department = $validated['department'] ?? null; // Employee model stores department name string based on fillable
+            $employee->department = $validated['department'] ?? null;
             $employee->job_role_id = $roleId;
-            $employee->status = 'Active'; // Default status
+            $employee->status = 'Active';
             
-            // Handle date_hired if provided in future updates, or default
-            // $employee->date_hired = now(); 
+            if (isset($validated['date_hired'])) {
+                $employee->date_hired = $validated['date_hired'];
+            }
 
             $employee->save();
 
@@ -208,12 +194,39 @@ class SyncController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Employee Sync Error: ' . $e->getMessage());
+            Log::error('Sync Receive Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function listEmployees(Request $request)
+    {
+        // 1. Verify Token (Optional: but recommended for data privacy)
+        $expectedToken = env('EMPLOYEE_SYNC_TOKEN', 'secret_token_12345');
+        // Allow check via Bearer token or 'token' query param for browser ease
+        $token = $request->bearerToken() ?? $request->query('token');
+
+        if ($token !== $expectedToken) {
             return response()->json([
                 'success' => false, 
-                'message' => 'Sync failed: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Unauthorized. Please provide valid token via Bearer Auth or ?token= param.'
+            ], 401);
         }
+
+        // 2. Fetch Data
+        // Get all employees with their related account info
+        $employees = Employee::with('account')->get();
+        
+        // Also get accounts that might not have an employee record yet (orphaned accounts)
+        $accounts = Account::whereDoesntHave('employee')->get();
+
+        return response()->json([
+            'success' => true,
+            'count_employees' => $employees->count(),
+            'count_orphaned_accounts' => $accounts->count(),
+            'employees' => $employees,
+            'orphaned_accounts' => $accounts
+        ]);
     }
 
     public function receiveData(Request $request)

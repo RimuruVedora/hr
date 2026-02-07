@@ -34,6 +34,9 @@ Route::get('/employee/sync', function () {
     ], 200);
 });
 
+// New Endpoint: Get All Employees & Accounts (Requires Token)
+Route::get('/employees/list', [SyncController::class, 'listEmployees']);
+
 // ESS Request API (Custom Token Auth)
 Route::get('/ess/request', [EssRequestApiController::class, 'getExternalRequests']);
 Route::post('/ess/request', [EssRequestApiController::class, 'storeExternalRequest']);
